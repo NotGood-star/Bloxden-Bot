@@ -22,7 +22,7 @@ const client = new Client({
 
 const commands = [
 
-  // FUN
+  // ================= FUN COMMANDS =================
 
   new SlashCommandBuilder()
     .setName('ping')
@@ -67,14 +67,18 @@ const commands = [
         .setRequired(true)
     ),
 
-  // MODERATION
+  new SlashCommandBuilder()
+    .setName('quote')
+    .setDescription('Get a motivational quote'),
+
+  // ================= MODERATION =================
 
   new SlashCommandBuilder()
     .setName('ban')
     .setDescription('Ban a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User')
+        .setDescription('User to ban')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
@@ -84,7 +88,7 @@ const commands = [
     .setDescription('Kick a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User')
+        .setDescription('User to kick')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
@@ -94,34 +98,43 @@ const commands = [
     .setDescription('Timeout a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User')
+        .setDescription('User to timeout')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
-  // UTILITY
+  // ================= UTILITY =================
 
   new SlashCommandBuilder()
     .setName('serverinfo')
     .setDescription('Show server info'),
 
   new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Show user info')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('Select user')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
     .setName('avatar')
     .setDescription('Show avatar')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User')
+        .setDescription('Select user')
         .setRequired(true)
     ),
 
-  // ROBLOX
+  // ================= ROBLOX =================
 
   new SlashCommandBuilder()
     .setName('robloxuser')
     .setDescription('Check Roblox username')
     .addStringOption(option =>
       option.setName('username')
-        .setDescription('Username')
+        .setDescription('Roblox username')
         .setRequired(true)
     ),
 
@@ -129,15 +142,55 @@ const commands = [
     .setName('bloxfruitstock')
     .setDescription('Check Blox Fruits stock'),
 
-  // GIVEAWAYS
+  new SlashCommandBuilder()
+    .setName('gamepass')
+    .setDescription('Fake gamepass checker')
+    .addStringOption(option =>
+      option.setName('name')
+        .setDescription('Gamepass name')
+        .setRequired(true)
+    ),
+
+  // ================= GIVEAWAYS =================
 
   new SlashCommandBuilder()
     .setName('gstart')
-    .setDescription('Start giveaway')
+    .setDescription('Start a giveaway')
+
     .addStringOption(option =>
       option.setName('prize')
-        .setDescription('Prize')
+        .setDescription('Giveaway prize')
         .setRequired(true)
+    )
+
+    .addIntegerOption(option =>
+      option.setName('winners')
+        .setDescription('Number of winners')
+        .setRequired(true)
+    )
+
+    .addStringOption(option =>
+      option.setName('duration')
+        .setDescription('Example: 1m, 1h, 1d')
+        .setRequired(true)
+    )
+
+    .addChannelOption(option =>
+      option.setName('channel')
+        .setDescription('Giveaway channel')
+        .setRequired(true)
+    )
+
+    .addRoleOption(option =>
+      option.setName('required_role')
+        .setDescription('Required role')
+        .setRequired(false)
+    )
+
+    .addRoleOption(option =>
+      option.setName('blacklist_role')
+        .setDescription('Blacklisted role')
+        .setRequired(false)
     ),
 
   new SlashCommandBuilder()
@@ -148,11 +201,12 @@ const commands = [
     .setName('greroll')
     .setDescription('Reroll giveaway')
 
-].map(cmd => cmd.toJSON());
+].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
+
   try {
 
     console.log('Registering slash commands...');
@@ -164,9 +218,10 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
     console.log('Slash commands registered!');
 
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
   }
+
 })();
 
 client.once('ready', () => {
@@ -177,7 +232,7 @@ client.on('interactionCreate', async interaction => {
 
   if (!interaction.isChatInputCommand()) return;
 
-  // FUN
+  // ================= FUN =================
 
   if (interaction.commandName === 'ping') {
     await interaction.reply('🏓 Pong!');
@@ -259,7 +314,24 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  // MODERATION
+  if (interaction.commandName === 'quote') {
+
+    const quotes = [
+      'Never give up.',
+      'Dream big.',
+      'Stay strong.',
+      'Success takes time.',
+      'Hard work beats talent.',
+      'Consistency is key.'
+    ];
+
+    const quote =
+      quotes[Math.floor(Math.random() * quotes.length)];
+
+    await interaction.reply(`💡 ${quote}`);
+  }
+
+  // ================= MODERATION =================
 
   if (interaction.commandName === 'ban') {
 
@@ -315,12 +387,22 @@ client.on('interactionCreate', async interaction => {
     );
   }
 
-  // UTILITY
+  // ================= UTILITY =================
 
   if (interaction.commandName === 'serverinfo') {
 
     await interaction.reply(
       `Server: ${interaction.guild.name}\nMembers: ${interaction.guild.memberCount}`
+    );
+  }
+
+  if (interaction.commandName === 'userinfo') {
+
+    const user =
+      interaction.options.getUser('user');
+
+    await interaction.reply(
+      `Username: ${user.tag}\nID: ${user.id}`
     );
   }
 
@@ -334,7 +416,7 @@ client.on('interactionCreate', async interaction => {
     );
   }
 
-  // ROBLOX
+  // ================= ROBLOX =================
 
   if (interaction.commandName === 'robloxuser') {
 
@@ -353,24 +435,67 @@ client.on('interactionCreate', async interaction => {
     );
   }
 
-  // GIVEAWAYS
+  if (interaction.commandName === 'gamepass') {
+
+    const name =
+      interaction.options.getString('name');
+
+    await interaction.reply(
+      `🎮 Gamepass "${name}" checked successfully!`
+    );
+  }
+
+  // ================= GIVEAWAYS =================
 
   if (interaction.commandName === 'gstart') {
 
     const prize =
       interaction.options.getString('prize');
 
-    const msg = await interaction.reply({
+    const winners =
+      interaction.options.getInteger('winners');
+
+    const duration =
+      interaction.options.getString('duration');
+
+    const channel =
+      interaction.options.getChannel('channel');
+
+    const requiredRole =
+      interaction.options.getRole('required_role');
+
+    const blacklistRole =
+      interaction.options.getRole('blacklist_role');
+
+    const host = interaction.user;
+
+    const msg = await channel.send({
+
       content:
-`🎉 GIVEAWAY STARTED 🎉
+`🎉 **GIVEAWAY STARTED** 🎉
 
-Prize: ${prize}
+🏆 Prize: ${prize}
 
-React with 🎉 to enter!`,
-      fetchReply: true
+👑 Winners: ${winners}
+
+⏰ Duration: ${duration}
+
+🎈 Hosted By: ${host}
+
+${requiredRole ? `✅ Required Role: ${requiredRole}\n` : ''}
+
+${blacklistRole ? `🚫 Blacklisted Role: ${blacklistRole}` : ''}
+
+React with 🎉 to enter!`
+
     });
 
     await msg.react('🎉');
+
+    await interaction.reply({
+      content: '✅ Giveaway started!',
+      ephemeral: true
+    });
   }
 
   if (interaction.commandName === 'gend') {
