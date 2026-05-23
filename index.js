@@ -1,45 +1,35 @@
 const express = require("express");
-const {
-  Client,
-  GatewayIntentBits,
-  PermissionsBitField
-} = require("discord.js");
-
+const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
 require("dotenv").config();
 
 // ================= EXPRESS (RENDER KEEP ALIVE) =================
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("Bot is running ✅");
+  res.send("Bot is online ✅");
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🌐 Server running on port ${PORT}`);
+  console.log("🌐 Server running on port " + PORT);
 });
 
-// ================= DISCORD BOT =================
+// ================= DISCORD CLIENT =================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.MessageContent
   ]
 });
 
-// ================= ANTI CRASH =================
+// ================= ERROR HANDLING (CRASH PROOF) =================
 process.on("unhandledRejection", console.log);
 process.on("uncaughtException", console.log);
-
-// ================= WARN STORAGE =================
-const warnings = new Map();
 
 // ================= READY =================
 client.once("ready", () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  client.user.setActivity("All-in-One Bot", { type: 3 });
 });
 
 // ================= LOGIN =================
@@ -56,135 +46,91 @@ client.on("messageCreate", async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const cmd = args.shift().toLowerCase();
 
-  const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-  // ================= FUN =================
+  // ================= PING =================
   if (cmd === "ping") {
     return message.reply(`🏓 Pong! ${client.ws.ping}ms`);
   }
 
+  // ================= JOKE =================
   if (cmd === "joke") {
     const jokes = [
-      "Why did the dev go broke? Cache problems.",
-      "I told my PC a joke, it crashed.",
-      "Coding is 10% writing, 90% fixing errors."
+      "Why did the developer go broke? Because he used up all his cache.",
+      "My code doesn’t have bugs — it just develops random features.",
+      "Debugging: Being the detective in a crime movie where you are also the murderer."
     ];
-    return message.reply(`😂 ${random(jokes)}`);
+    return message.reply(jokes[Math.floor(Math.random() * jokes.length)]);
   }
 
+  // ================= 8BALL =================
   if (cmd === "8ball") {
-    const answers = ["Yes", "No", "Maybe", "Definitely", "Never"];
-    return message.reply(`🎱 ${random(answers)}`);
+    const answers = ["Yes", "No", "Maybe", "Definitely", "Never", "Try again"];
+    return message.reply(`🎱 ${answers[Math.floor(Math.random() * answers.length)]}`);
   }
 
+  // ================= COINFLIP =================
   if (cmd === "coinflip") {
     return message.reply(Math.random() < 0.5 ? "🪙 Heads" : "🪙 Tails");
   }
 
+  // ================= DICE =================
   if (cmd === "dice") {
-    return message.reply(`🎲 ${Math.floor(Math.random() * 6) + 1}`);
+    return message.reply(`🎲 You rolled: ${Math.floor(Math.random() * 6) + 1}`);
   }
 
-  // ================= MODERATION =================
+  // ================= AVATAR =================
+  if (cmd === "avatar") {
+    const user = message.mentions.users.first() || message.author;
+    return message.reply(user.displayAvatarURL({ dynamic: true }));
+  }
+
+  // ================= USERINFO =================
+  if (cmd === "userinfo") {
+    const user = message.mentions.users.first() || message.author;
+    return message.reply(`👤 ${user.tag} | ID: ${user.id}`);
+  }
+
+  // ================= SERVER INFO =================
+  if (cmd === "serverinfo") {
+    return message.reply(
+      `📌 Server: ${message.guild.name}\n👥 Members: ${message.guild.memberCount}`
+    );
+  }
+
+  // ================= KICK =================
   if (cmd === "kick") {
     if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
       return message.reply("❌ No permission");
 
-    const user = message.mentions.members.first();
-    if (!user) return message.reply("Mention user");
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("❌ Mention a user");
 
-    await user.kick().catch(() => {});
-    return message.reply("👢 Kicked");
+    await member.kick().catch(() => {});
+    return message.reply("👢 User kicked");
   }
 
+  // ================= BAN =================
   if (cmd === "ban") {
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
       return message.reply("❌ No permission");
 
-    const user = message.mentions.members.first();
-    if (!user) return message.reply("Mention user");
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("❌ Mention a user");
 
-    await user.ban().catch(() => {});
-    return message.reply("🔨 Banned");
+    await member.ban().catch(() => {});
+    return message.reply("🔨 User banned");
   }
 
-  if (cmd === "timeout") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
-      return message.reply("❌ No permission");
-
-    const user = message.mentions.members.first();
-    const time = parseInt(args[1]);
-
-    if (!user || !time) return message.reply("Usage: /timeout @user seconds");
-
-    await user.timeout(time * 1000).catch(() => {});
-    return message.reply("⏳ Timed out");
-  }
-
-  // ================= WARN SYSTEM =================
+  // ================= WARN =================
   if (cmd === "warn") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
-      return message.reply("❌ No permission");
-
-    const user = message.mentions.users.first();
-    const reason = args.slice(1).join(" ") || "No reason";
-
-    if (!user) return message.reply("Usage: /warn @user reason");
-
-    if (!warnings.has(user.id)) warnings.set(user.id, []);
-
-    warnings.get(user.id).push({
-      reason,
-      moderator: message.author.tag,
-      date: new Date().toLocaleString()
-    });
-
-    return message.reply(`⚠️ Warned ${user.tag}`);
-  }
-
-  if (cmd === "warnings") {
-    const user = message.mentions.users.first() || message.author;
-
-    const data = warnings.get(user.id);
-
-    if (!data || data.length === 0)
-      return message.reply("✅ No warnings");
-
-    let text = `⚠️ Warnings for ${user.tag}\n\n`;
-
-    data.forEach((w, i) => {
-      text += `#${i + 1}\nReason: ${w.reason}\nBy: ${w.moderator}\nDate: ${w.date}\n\n`;
-    });
-
-    return message.reply(text);
-  }
-
-  // ================= UTILITY =================
-  if (cmd === "avatar") {
-    const user = message.mentions.users.first() || message.author;
-    return message.reply(user.displayAvatarURL());
-  }
-
-  if (cmd === "userinfo") {
-    const user = message.mentions.users.first() || message.author;
-    return message.reply(`User: ${user.tag} | ID: ${user.id}`);
-  }
-
-  if (cmd === "serverinfo") {
-    return message.reply(
-      `Server: ${message.guild.name}\nMembers: ${message.guild.memberCount}`
-    );
+    return message.reply("⚠️ Warn system ready (upgrade needed for database)");
   }
 
   // ================= GIVEAWAY =================
   if (cmd === "gstart") {
     const prize = args.join(" ");
-    if (!prize) return message.reply("Give prize");
+    if (!prize) return message.reply("❌ Give a prize");
 
-    const msg = await message.channel.send(
-      `🎁 GIVEAWAY\nPrize: ${prize}\nReact 🎉`
-    );
-
+    const msg = await message.channel.send(`🎁 GIVEAWAY: ${prize}\nReact 🎉`);
     await msg.react("🎉");
   }
 
