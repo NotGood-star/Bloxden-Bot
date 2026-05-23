@@ -1,577 +1,188 @@
-const {
-  Client,
-  GatewayIntentBits,
-  SlashCommandBuilder,
-  REST,
-  Routes,
-  PermissionFlagsBits
-} = require('discord.js');
+const { 
+  Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField 
+} = require("discord.js");
 
-const TOKEN = process.env.TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
+require("dotenv").config();
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessageReactions
+    GatewayIntentBits.GuildMembers
   ]
 });
 
-const commands = [
+const PREFIX = "/";
+
+// ================= READY =================
+client.once("ready", () => {
+  console.log(`${client.user.tag} is online`);
+  client.user.setActivity("Advanced Bot", { type: 3 });
+});
+
+// ================= UTIL =================
+function random(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ================= COMMAND HANDLER =================
+client.on("messageCreate", async (message) => {
+  if (!message.content.startsWith(PREFIX) || message.author.bot) return;
+
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const cmd = args.shift().toLowerCase();
 
   // ================= FUN COMMANDS =================
 
-  new SlashCommandBuilder()
-    .setName('ping')
-    .setDescription('Replies with Pong!'),
-
-  new SlashCommandBuilder()
-    .setName('8ball')
-    .setDescription('Ask the magic 8ball')
-    .addStringOption(option =>
-      option.setName('question')
-        .setDescription('Your question')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('joke')
-    .setDescription('Get a random joke'),
-
-  new SlashCommandBuilder()
-    .setName('rps')
-    .setDescription('Rock Paper Scissors')
-    .addStringOption(option =>
-      option.setName('choice')
-        .setDescription('rock, paper, scissors')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('coinflip')
-    .setDescription('Flip a coin'),
-
-  new SlashCommandBuilder()
-    .setName('dice')
-    .setDescription('Roll a dice'),
-
-  new SlashCommandBuilder()
-    .setName('guess')
-    .setDescription('Guess a number')
-    .addIntegerOption(option =>
-      option.setName('number')
-        .setDescription('1-5')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('quote')
-    .setDescription('Get a motivational quote'),
-
-  // ================= MODERATION =================
-
-  new SlashCommandBuilder()
-    .setName('ban')
-    .setDescription('Ban a member')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('User to ban')
-        .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
-
-  new SlashCommandBuilder()
-    .setName('kick')
-    .setDescription('Kick a member')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('User to kick')
-        .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-
-  new SlashCommandBuilder()
-    .setName('timeout')
-    .setDescription('Timeout a member')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('User to timeout')
-        .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-
-  // ================= UTILITY =================
-
-  new SlashCommandBuilder()
-    .setName('serverinfo')
-    .setDescription('Show server info'),
-
-  new SlashCommandBuilder()
-    .setName('userinfo')
-    .setDescription('Show user info')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('Select user')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('avatar')
-    .setDescription('Show avatar')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('Select user')
-        .setRequired(true)
-    ),
-
-  // ================= ROBLOX =================
-
-  new SlashCommandBuilder()
-    .setName('robloxuser')
-    .setDescription('Check Roblox username')
-    .addStringOption(option =>
-      option.setName('username')
-        .setDescription('Roblox username')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('bloxfruitstock')
-    .setDescription('Check Blox Fruits stock'),
-
-  new SlashCommandBuilder()
-    .setName('gamepass')
-    .setDescription('Fake gamepass checker')
-    .addStringOption(option =>
-      option.setName('name')
-        .setDescription('Gamepass name')
-        .setRequired(true)
-    ),
-
-  // ================= GIVEAWAYS =================
-
-  new SlashCommandBuilder()
-    .setName('gstart')
-    .setDescription('Start a giveaway')
-
-    .addStringOption(option =>
-      option.setName('prize')
-        .setDescription('Giveaway prize')
-        .setRequired(true)
-    )
-
-    .addIntegerOption(option =>
-      option.setName('winners')
-        .setDescription('Number of winners')
-        .setRequired(true)
-    )
-
-    .addStringOption(option =>
-      option.setName('duration')
-        .setDescription('Example: 1m, 1h, 1d')
-        .setRequired(true)
-    )
-
-    .addChannelOption(option =>
-      option.setName('channel')
-        .setDescription('Giveaway channel')
-        .setRequired(true)
-    )
-
-    .addRoleOption(option =>
-      option.setName('required_role')
-        .setDescription('Required role')
-        .setRequired(false)
-    )
-
-    .addRoleOption(option =>
-      option.setName('blacklist_role')
-        .setDescription('Blacklisted role')
-        .setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('gend')
-    .setDescription('End giveaway'),
-
-  new SlashCommandBuilder()
-    .setName('greroll')
-    .setDescription('Reroll giveaway')
-
-].map(command => command.toJSON());
-
-const rest = new REST({ version: '10' }).setToken(TOKEN);
-
-(async () => {
-
-  try {
-
-    console.log('Registering slash commands...');
-
-    await rest.put(
-      Routes.applicationCommands(CLIENT_ID),
-      { body: commands }
-    );
-
-    console.log('Slash commands registered!');
-
-  } catch (error) {
-    console.error(error);
+  if (cmd === "ping") {
+    return message.reply(`🏓 Pong! ${client.ws.ping}ms`);
   }
 
-})();
-
-client.once('ready', () => {
-  console.log(`${client.user.tag} is online!`);
-});
-
-client.on('interactionCreate', async interaction => {
-
-  if (!interaction.isChatInputCommand()) return;
-
-  // ================= FUN =================
-
-  if (interaction.commandName === 'ping') {
-    await interaction.reply('🏓 Pong!');
+  if (cmd === "8ball") {
+    const replies = ["Yes", "No", "Maybe", "Definitely", "Never", "Ask again"];
+    return message.reply(`🎱 ${random(replies)}`);
   }
 
-  if (interaction.commandName === '8ball') {
-
-    const replies = [
-      'Yes',
-      'No',
-      'Maybe',
-      'Definitely',
-      'Never'
+  if (cmd === "joke") {
+    const jokes = [
+      "Why don’t programmers like nature? Too many bugs.",
+      "I told my computer I needed a break, it said 'No problem I’ll go to sleep.'",
+      "Why did the developer go broke? Because he used up all his cache."
     ];
-
-    const response =
-      replies[Math.floor(Math.random() * replies.length)];
-
-    await interaction.reply(`🎱 ${response}`);
+    return message.reply(`😂 ${random(jokes)}`);
   }
 
-  if (interaction.commandName === 'joke') {
+  if (cmd === "rps") {
+    const choices = ["rock", "paper", "scissors"];
+    const bot = random(choices);
+    const user = args[0];
 
-    await interaction.reply(
-      '😂 Why did the developer go broke? Because he used up all his cache!'
-    );
-  }
+    if (!user) return message.reply("Usage: /rps rock|paper|scissors");
 
-  if (interaction.commandName === 'rps') {
-
-    const userChoice =
-      interaction.options.getString('choice');
-
-    const choices = ['rock', 'paper', 'scissors'];
-
-    const botChoice =
-      choices[Math.floor(Math.random() * choices.length)];
-
-    await interaction.reply(
-      `You chose ${userChoice} | Bot chose ${botChoice}`
-    );
-  }
-
-  if (interaction.commandName === 'coinflip') {
-
-    const result =
-      Math.random() < 0.5 ? 'Heads' : 'Tails';
-
-    await interaction.reply(`🪙 ${result}`);
-  }
-
-  if (interaction.commandName === 'dice') {
-
-    const dice =
-      Math.floor(Math.random() * 6) + 1;
-
-    await interaction.reply(`🎲 You rolled ${dice}`);
-  }
-
-  if (interaction.commandName === 'guess') {
-
-    const user =
-      interaction.options.getInteger('number');
-
-    const random =
-      Math.floor(Math.random() * 5) + 1;
-
-    if (user === random) {
-
-      await interaction.reply(
-        `🎉 Correct! Number was ${random}`
-      );
-
-    } else {
-
-      await interaction.reply(
-        `❌ Wrong! Number was ${random}`
-      );
+    if (user === bot) return message.reply(`Tie! I also chose ${bot}`);
+    if (
+      (user === "rock" && bot === "scissors") ||
+      (user === "paper" && bot === "rock") ||
+      (user === "scissors" && bot === "paper")
+    ) {
+      return message.reply(`You win! I chose ${bot}`);
     }
+    return message.reply(`I win! I chose ${bot}`);
   }
 
-  if (interaction.commandName === 'quote') {
+  if (cmd === "coinflip") {
+    return message.reply(`🪙 ${Math.random() < 0.5 ? "Heads" : "Tails"}`);
+  }
 
+  if (cmd === "dice") {
+    return message.reply(`🎲 You rolled: ${Math.floor(Math.random() * 6) + 1}`);
+  }
+
+  if (cmd === "guess") {
+    const num = Math.floor(Math.random() * 10) + 1;
+    const guess = parseInt(args[0]);
+    if (!guess) return message.reply("Guess a number 1-10");
+    return message.reply(guess === num ? "Correct!" : `Wrong! It was ${num}`);
+  }
+
+  if (cmd === "quote") {
     const quotes = [
-      'Never give up.',
-      'Dream big.',
-      'Stay strong.',
-      'Success takes time.',
-      'Hard work beats talent.',
-      'Consistency is key.'
+      "Believe in yourself.",
+      "Never give up.",
+      "Work hard, dream big."
     ];
-
-    const quote =
-      quotes[Math.floor(Math.random() * quotes.length)];
-
-    await interaction.reply(`💡 ${quote}`);
+    return message.reply(`💬 ${random(quotes)}`);
   }
 
   // ================= MODERATION =================
 
-  if (interaction.commandName === 'ban') {
+  if (cmd === "ban") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
+      return message.reply("No permission");
 
-    const user =
-      interaction.options.getUser('user');
+    const user = message.mentions.members.first();
+    if (!user) return message.reply("Mention user");
 
-    const member =
-      interaction.guild.members.cache.get(user.id);
-
-    if (!member)
-      return interaction.reply('User not found.');
-
-    await member.ban();
-
-    await interaction.reply(
-      `${user.tag} has been banned.`
-    );
+    await user.ban();
+    return message.reply("User banned");
   }
 
-  if (interaction.commandName === 'kick') {
+  if (cmd === "kick") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+      return message.reply("No permission");
 
-    const user =
-      interaction.options.getUser('user');
+    const user = message.mentions.members.first();
+    if (!user) return message.reply("Mention user");
 
-    const member =
-      interaction.guild.members.cache.get(user.id);
-
-    if (!member)
-      return interaction.reply('User not found.');
-
-    await member.kick();
-
-    await interaction.reply(
-      `${user.tag} has been kicked.`
-    );
+    await user.kick();
+    return message.reply("User kicked");
   }
 
-  if (interaction.commandName === 'timeout') {
+  if (cmd === "timeout") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
+      return message.reply("No permission");
 
-    const user =
-      interaction.options.getUser('user');
+    const user = message.mentions.members.first();
+    const time = args[1];
 
-    const member =
-      interaction.guild.members.cache.get(user.id);
+    if (!user || !time) return message.reply("Usage: /timeout @user seconds");
 
-    if (!member)
-      return interaction.reply('User not found.');
-
-    await member.timeout(60000);
-
-    await interaction.reply(
-      `${user.tag} timed out for 1 minute.`
-    );
+    await user.timeout(time * 1000);
+    return message.reply("User timed out");
   }
 
   // ================= UTILITY =================
 
-  if (interaction.commandName === 'serverinfo') {
-
-    await interaction.reply(
-      `Server: ${interaction.guild.name}\nMembers: ${interaction.guild.memberCount}`
-    );
+  if (cmd === "serverinfo") {
+    return message.reply(`Server: ${message.guild.name}\nMembers: ${message.guild.memberCount}`);
   }
 
-  if (interaction.commandName === 'userinfo') {
-
-    const user =
-      interaction.options.getUser('user');
-
-    await interaction.reply(
-      `Username: ${user.tag}\nID: ${user.id}`
-    );
+  if (cmd === "userinfo") {
+    const user = message.mentions.users.first() || message.author;
+    return message.reply(`User: ${user.username} | ID: ${user.id}`);
   }
 
-  if (interaction.commandName === 'avatar') {
-
-    const user =
-      interaction.options.getUser('user');
-
-    await interaction.reply(
-      user.displayAvatarURL()
-    );
+  if (cmd === "avatar") {
+    const user = message.mentions.users.first() || message.author;
+    return message.reply(user.displayAvatarURL());
   }
 
-  // ================= ROBLOX =================
+  // ================= ROBLOX (PLACEHOLDER API) =================
 
-  if (interaction.commandName === 'robloxuser') {
-
-    const username =
-      interaction.options.getString('username');
-
-    await interaction.reply(
-      `👤 Roblox User: ${username}`
-    );
+  if (cmd === "robloxuser") {
+    const name = args[0];
+    if (!name) return message.reply("Provide Roblox username");
+    return message.reply(`Searching Roblox user: ${name} (API integration needed)`);
   }
 
-  if (interaction.commandName === 'bloxfruitstock') {
-
-    await interaction.reply(
-      '🍎 Current Stock:\nRocket\nIce\nLight\nMagma'
-    );
+  if (cmd === "bloxfruitstock") {
+    return message.reply("🍎 Blox Fruit Stock: (API required)");
   }
 
-  if (interaction.commandName === 'gamepass') {
-
-    const name =
-      interaction.options.getString('name');
-
-    await interaction.reply(
-      `🎮 Gamepass "${name}" checked successfully!`
-    );
+  if (cmd === "gamepass") {
+    return message.reply("🎮 Gamepass checker: (API required)");
   }
 
-  // ================= GIVEAWAYS =================
+  // ================= GIVEAWAY (SIMPLE VERSION) =================
 
-  if (interaction.commandName === 'gstart') {
+  if (cmd === "gstart") {
+    const prize = args.join(" ");
+    if (!prize) return message.reply("Provide prize");
 
-    const prize =
-      interaction.options.getString('prize');
+    const msg = await message.channel.send(`🎁 GIVEAWAY STARTED 🎁\nPrize: ${prize}\nReact 🎉 to join`);
 
-    const winners =
-      interaction.options.getInteger('winners');
-
-    const duration =
-      interaction.options.getString('duration');
-
-    const channel =
-      interaction.options.getChannel('channel');
-
-    const requiredRole =
-      interaction.options.getRole('required_role');
-
-    const blacklistRole =
-      interaction.options.getRole('blacklist_role');
-
-    const host = interaction.user;
-
-    const msg = await channel.send({
-
-      content:
-`🎉 **GIVEAWAY STARTED** 🎉
-
-🏆 Prize: ${prize}
-
-👑 Winners: ${winners}
-
-⏰ Duration: ${duration}
-
-🎈 Hosted By: ${host}
-
-${requiredRole ? `✅ Required Role: ${requiredRole}\n` : ''}
-
-${blacklistRole ? `🚫 Blacklisted Role: ${blacklistRole}` : ''}
-
-React with 🎉 to enter!`
-
-    });
-
-    await msg.react('🎉');
-
-    await interaction.reply({
-      content: '✅ Giveaway started!',
-      ephemeral: true
-    });
+    await msg.react("🎉");
   }
 
-  if (interaction.commandName === 'gend') {
-
-    const messages =
-      await interaction.channel.messages.fetch();
-
-    const giveawayMsg =
-      messages.find(m =>
-        m.content.includes('GIVEAWAY STARTED')
-      );
-
-    if (!giveawayMsg)
-      return interaction.reply(
-        '❌ No giveaway found.'
-      );
-
-    const reaction =
-      giveawayMsg.reactions.cache.get('🎉');
-
-    const users =
-      await reaction.users.fetch();
-
-    const filtered =
-      users.filter(u => !u.bot);
-
-    if (filtered.size === 0)
-      return interaction.reply(
-        '❌ No participants.'
-      );
-
-    const winner =
-      filtered.random();
-
-    await interaction.reply(
-      `🏆 Winner: ${winner}`
-    );
+  if (cmd === "greroll") {
+    return message.reply("🎁 Reroll system needs database (I can add advanced version)");
   }
 
-  if (interaction.commandName === 'greroll') {
-
-    const messages =
-      await interaction.channel.messages.fetch();
-
-    const giveawayMsg =
-      messages.find(m =>
-        m.content.includes('GIVEAWAY STARTED')
-      );
-
-    if (!giveawayMsg)
-      return interaction.reply(
-        '❌ No giveaway found.'
-      );
-
-    const reaction =
-      giveawayMsg.reactions.cache.get('🎉');
-
-    const users =
-      await reaction.users.fetch();
-
-    const filtered =
-      users.filter(u => !u.bot);
-
-    if (filtered.size === 0)
-      return interaction.reply(
-        '❌ No participants.'
-      );
-
-    const winner =
-      filtered.random();
-
-    await interaction.reply(
-      `🔄 New Winner: ${winner}`
-    );
+  if (cmd === "gend") {
+    return message.reply("🎁 Giveaway ended manually");
   }
-
 });
 
-client.login(TOKEN);
+// ================= LOGIN =================
+client.login(process.MTUwNzU5MDk1ODgzNjA4ODkzMg.GF8HVn.ns0O8ciqF4BtttrDIfrAx-Ploy3hmzyF7K-KgkTOKEN);
