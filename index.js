@@ -13,9 +13,10 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
   ]
 });
 
@@ -62,13 +63,9 @@ const commands = [
     .setDescription('Guess a number')
     .addIntegerOption(option =>
       option.setName('number')
-        .setDescription('Number between 1-5')
+        .setDescription('1-5')
         .setRequired(true)
     ),
-
-  new SlashCommandBuilder()
-    .setName('quote')
-    .setDescription('Get a motivational quote'),
 
   // MODERATION
 
@@ -77,7 +74,7 @@ const commands = [
     .setDescription('Ban a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User to ban')
+        .setDescription('User')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
@@ -87,7 +84,7 @@ const commands = [
     .setDescription('Kick a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User to kick')
+        .setDescription('User')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
@@ -97,7 +94,7 @@ const commands = [
     .setDescription('Timeout a member')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('User to timeout')
+        .setDescription('User')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
@@ -109,20 +106,11 @@ const commands = [
     .setDescription('Show server info'),
 
   new SlashCommandBuilder()
-    .setName('userinfo')
-    .setDescription('Show user info')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('Select user')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
     .setName('avatar')
     .setDescription('Show avatar')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('Select user')
+        .setDescription('User')
         .setRequired(true)
     ),
 
@@ -133,7 +121,7 @@ const commands = [
     .setDescription('Check Roblox username')
     .addStringOption(option =>
       option.setName('username')
-        .setDescription('Roblox username')
+        .setDescription('Username')
         .setRequired(true)
     ),
 
@@ -141,35 +129,26 @@ const commands = [
     .setName('bloxfruitstock')
     .setDescription('Check Blox Fruits stock'),
 
-  new SlashCommandBuilder()
-    .setName('gamepass')
-    .setDescription('Fake gamepass checker')
-    .addStringOption(option =>
-      option.setName('name')
-        .setDescription('Gamepass name')
-        .setRequired(true)
-    ),
-
   // GIVEAWAYS
 
   new SlashCommandBuilder()
     .setName('gstart')
-    .setDescription('Start a giveaway')
+    .setDescription('Start giveaway')
     .addStringOption(option =>
       option.setName('prize')
-        .setDescription('Giveaway prize')
+        .setDescription('Prize')
         .setRequired(true)
     ),
 
   new SlashCommandBuilder()
-    .setName('greroll')
-    .setDescription('Reroll giveaway'),
+    .setName('gend')
+    .setDescription('End giveaway'),
 
   new SlashCommandBuilder()
-    .setName('gend')
-    .setDescription('End giveaway')
+    .setName('greroll')
+    .setDescription('Reroll giveaway')
 
-].map(command => command.toJSON());
+].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -185,8 +164,8 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
     console.log('Slash commands registered!');
 
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
   }
 })();
 
@@ -260,13 +239,13 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'guess') {
 
-    const userNumber =
+    const user =
       interaction.options.getInteger('number');
 
     const random =
       Math.floor(Math.random() * 5) + 1;
 
-    if (userNumber === random) {
+    if (user === random) {
 
       await interaction.reply(
         `🎉 Correct! Number was ${random}`
@@ -280,70 +259,59 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
-  if (interaction.commandName === 'quote') {
-
-    const quotes = [
-      'Never give up.',
-      'Dream big.',
-      'Stay strong.',
-      'Success takes time.'
-    ];
-
-    const quote =
-      quotes[Math.floor(Math.random() * quotes.length)];
-
-    await interaction.reply(`💡 ${quote}`);
-  }
-
   // MODERATION
 
   if (interaction.commandName === 'ban') {
 
-    const user = interaction.options.getUser('user');
+    const user =
+      interaction.options.getUser('user');
 
     const member =
       interaction.guild.members.cache.get(user.id);
 
-    if (!member) {
+    if (!member)
       return interaction.reply('User not found.');
-    }
 
     await member.ban();
 
-    await interaction.reply(`${user.tag} has been banned.`);
+    await interaction.reply(
+      `${user.tag} has been banned.`
+    );
   }
 
   if (interaction.commandName === 'kick') {
 
-    const user = interaction.options.getUser('user');
+    const user =
+      interaction.options.getUser('user');
 
     const member =
       interaction.guild.members.cache.get(user.id);
 
-    if (!member) {
+    if (!member)
       return interaction.reply('User not found.');
-    }
 
     await member.kick();
 
-    await interaction.reply(`${user.tag} has been kicked.`);
+    await interaction.reply(
+      `${user.tag} has been kicked.`
+    );
   }
 
   if (interaction.commandName === 'timeout') {
 
-    const user = interaction.options.getUser('user');
+    const user =
+      interaction.options.getUser('user');
 
     const member =
       interaction.guild.members.cache.get(user.id);
 
-    if (!member) {
+    if (!member)
       return interaction.reply('User not found.');
-    }
 
     await member.timeout(60000);
 
     await interaction.reply(
-      `${user.tag} has been timed out for 1 minute.`
+      `${user.tag} timed out for 1 minute.`
     );
   }
 
@@ -352,17 +320,7 @@ client.on('interactionCreate', async interaction => {
   if (interaction.commandName === 'serverinfo') {
 
     await interaction.reply(
-      `Server Name: ${interaction.guild.name}\nMembers: ${interaction.guild.memberCount}`
-    );
-  }
-
-  if (interaction.commandName === 'userinfo') {
-
-    const user =
-      interaction.options.getUser('user');
-
-    await interaction.reply(
-      `Username: ${user.tag}\nID: ${user.id}`
+      `Server: ${interaction.guild.name}\nMembers: ${interaction.guild.memberCount}`
     );
   }
 
@@ -371,7 +329,9 @@ client.on('interactionCreate', async interaction => {
     const user =
       interaction.options.getUser('user');
 
-    await interaction.reply(user.displayAvatarURL());
+    await interaction.reply(
+      user.displayAvatarURL()
+    );
   }
 
   // ROBLOX
@@ -393,16 +353,6 @@ client.on('interactionCreate', async interaction => {
     );
   }
 
-  if (interaction.commandName === 'gamepass') {
-
-    const name =
-      interaction.options.getString('name');
-
-    await interaction.reply(
-      `🎮 Gamepass "${name}" checked successfully!`
-    );
-  }
-
   // GIVEAWAYS
 
   if (interaction.commandName === 'gstart') {
@@ -410,22 +360,90 @@ client.on('interactionCreate', async interaction => {
     const prize =
       interaction.options.getString('prize');
 
+    const msg = await interaction.reply({
+      content:
+`🎉 GIVEAWAY STARTED 🎉
+
+Prize: ${prize}
+
+React with 🎉 to enter!`,
+      fetchReply: true
+    });
+
+    await msg.react('🎉');
+  }
+
+  if (interaction.commandName === 'gend') {
+
+    const messages =
+      await interaction.channel.messages.fetch();
+
+    const giveawayMsg =
+      messages.find(m =>
+        m.content.includes('GIVEAWAY STARTED')
+      );
+
+    if (!giveawayMsg)
+      return interaction.reply(
+        '❌ No giveaway found.'
+      );
+
+    const reaction =
+      giveawayMsg.reactions.cache.get('🎉');
+
+    const users =
+      await reaction.users.fetch();
+
+    const filtered =
+      users.filter(u => !u.bot);
+
+    if (filtered.size === 0)
+      return interaction.reply(
+        '❌ No participants.'
+      );
+
+    const winner =
+      filtered.random();
+
     await interaction.reply(
-      `🎉 GIVEAWAY STARTED 🎉\nPrize: ${prize}\nReact with 🎉 to enter!`
+      `🏆 Winner: ${winner}`
     );
   }
 
   if (interaction.commandName === 'greroll') {
 
-    await interaction.reply(
-      '🔄 Giveaway rerolled!'
-    );
-  }
+    const messages =
+      await interaction.channel.messages.fetch();
 
-  if (interaction.commandName === 'gend') {
+    const giveawayMsg =
+      messages.find(m =>
+        m.content.includes('GIVEAWAY STARTED')
+      );
+
+    if (!giveawayMsg)
+      return interaction.reply(
+        '❌ No giveaway found.'
+      );
+
+    const reaction =
+      giveawayMsg.reactions.cache.get('🎉');
+
+    const users =
+      await reaction.users.fetch();
+
+    const filtered =
+      users.filter(u => !u.bot);
+
+    if (filtered.size === 0)
+      return interaction.reply(
+        '❌ No participants.'
+      );
+
+    const winner =
+      filtered.random();
 
     await interaction.reply(
-      '⛔ Giveaway ended!'
+      `🔄 New Winner: ${winner}`
     );
   }
 
