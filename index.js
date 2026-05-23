@@ -1,3 +1,5 @@
+// ================= IMPORTS =================
+const express = require("express");
 const {
   Client,
   GatewayIntentBits,
@@ -6,6 +8,19 @@ const {
 
 require("dotenv").config();
 
+// ================= EXPRESS KEEP-ALIVE =================
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("Bot is alive and running ✅");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
+
+// ================= DISCORD CLIENT =================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -15,216 +30,193 @@ const client = new Client({
   ]
 });
 
-const PREFIX = "/";
-const warnings = new Map(); // ⚠️ WARN STORAGE
+// ================= GLOBAL ERROR HANDLERS =================
+process.on("unhandledRejection", (err) => {
+  console.log("⚠️ Unhandled Rejection:", err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.log("⚠️ Uncaught Exception:", err);
+});
+
+process.on("uncaughtExceptionMonitor", (err) => {
+  console.log("⚠️ Exception Monitor:", err);
+});
+
+// ================= DATA STORAGE =================
+const warnings = new Map();
 
 // ================= READY =================
 client.once("ready", () => {
-  console.log(`${client.user.tag} is online`);
-  client.user.setActivity("All-in-One Bot", { type: 3 });
+  console.log(`✅ Logged in as ${client.user.tag}`);
+  client.user.setActivity("Stable Bot Running", { type: 3 });
 });
 
-// ================= RANDOM FUNCTION =================
-function random(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+// ================= LOGIN SAFETY =================
+function startBot() {
+  try {
+    client.login(process.env.TOKEN);
+  } catch (err) {
+    console.log("❌ Login failed, retrying in 5s...", err);
+    setTimeout(startBot, 5000);
+  }
 }
 
-// ================= COMMANDS =================
+startBot();
+
+// ================= COMMAND SYSTEM =================
+const PREFIX = "/";
+
 client.on("messageCreate", async (message) => {
-  if (!message.content.startsWith(PREFIX) || message.author.bot) return;
+  try {
+    if (!message.content.startsWith(PREFIX) || message.author.bot) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-  const cmd = args.shift().toLowerCase();
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const cmd = args.shift().toLowerCase();
 
-  // ================= FUN =================
+    const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  if (cmd === "ping") {
-    return message.reply(`🏓 Pong! ${client.ws.ping}ms`);
-  }
-
-  if (cmd === "8ball") {
-    const replies = ["Yes", "No", "Maybe", "Definitely", "Never", "Ask again"];
-    return message.reply(`🎱 ${random(replies)}`);
-  }
-
-  if (cmd === "joke") {
-    const jokes = [
-      "Why did the developer go broke? Because he used up all his cache.",
-      "I told my computer I needed a break, and it said 'No problem'.",
-      "Why do programmers hate nature? Too many bugs."
-    ];
-    return message.reply(`😂 ${random(jokes)}`);
-  }
-
-  if (cmd === "rps") {
-    const choices = ["rock", "paper", "scissors"];
-    const bot = random(choices);
-    const user = args[0];
-
-    if (!user) return message.reply("Usage: /rps rock|paper|scissors");
-
-    if (user === bot) return message.reply(`Tie! I chose ${bot}`);
-
-    if (
-      (user === "rock" && bot === "scissors") ||
-      (user === "paper" && bot === "rock") ||
-      (user === "scissors" && bot === "paper")
-    ) {
-      return message.reply(`You win! I chose ${bot}`);
+    // ================= FUN =================
+    if (cmd === "ping") {
+      return message.reply(`🏓 Pong! ${client.ws.ping}ms`);
     }
 
-    return message.reply(`I win! I chose ${bot}`);
-  }
+    if (cmd === "joke") {
+      const jokes = [
+        "Why do devs hate nature? Too many bugs.",
+        "I told my PC to break, it crashed my life instead.",
+        "Code never lies, comments sometimes do."
+      ];
+      return message.reply(`😂 ${random(jokes)}`);
+    }
 
-  if (cmd === "coinflip") {
-    return message.reply(`🪙 ${Math.random() < 0.5 ? "Heads" : "Tails"}`);
-  }
+    if (cmd === "8ball") {
+      const replies = ["Yes", "No", "Maybe", "Definitely", "Never"];
+      return message.reply(`🎱 ${random(replies)}`);
+    }
 
-  if (cmd === "dice") {
-    return message.reply(`🎲 ${Math.floor(Math.random() * 6) + 1}`);
-  }
+    if (cmd === "coinflip") {
+      return message.reply(`🪙 ${Math.random() < 0.5 ? "Heads" : "Tails"}`);
+    }
 
-  if (cmd === "guess") {
-    const num = Math.floor(Math.random() * 10) + 1;
-    const guess = parseInt(args[0]);
-    if (!guess) return message.reply("Guess 1-10");
-    return message.reply(guess === num ? "Correct!" : `Wrong! It was ${num}`);
-  }
+    if (cmd === "dice") {
+      return message.reply(`🎲 ${Math.floor(Math.random() * 6) + 1}`);
+    }
 
-  if (cmd === "quote") {
-    const quotes = ["Believe in yourself", "Never give up", "Work hard"];
-    return message.reply(`💬 ${random(quotes)}`);
-  }
+    // ================= MODERATION =================
+    if (cmd === "kick") {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+        return message.reply("❌ No permission");
 
-  // ================= MODERATION =================
+      const user = message.mentions.members.first();
+      if (!user) return message.reply("Mention user");
 
-  if (cmd === "ban") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
-      return message.reply("No permission");
+      await user.kick().catch(() => {});
+      return message.reply("👢 User kicked");
+    }
 
-    const user = message.mentions.members.first();
-    if (!user) return message.reply("Mention user");
+    if (cmd === "ban") {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
+        return message.reply("❌ No permission");
 
-    await user.ban();
-    return message.reply("User banned");
-  }
+      const user = message.mentions.members.first();
+      if (!user) return message.reply("Mention user");
 
-  if (cmd === "kick") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
-      return message.reply("No permission");
+      await user.ban().catch(() => {});
+      return message.reply("🔨 User banned");
+    }
 
-    const user = message.mentions.members.first();
-    if (!user) return message.reply("Mention user");
+    if (cmd === "timeout") {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
+        return message.reply("❌ No permission");
 
-    await user.kick();
-    return message.reply("User kicked");
-  }
+      const user = message.mentions.members.first();
+      const time = parseInt(args[1]);
 
-  if (cmd === "timeout") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
-      return message.reply("No permission");
+      if (!user || !time) return message.reply("Usage: /timeout @user seconds");
 
-    const user = message.mentions.members.first();
-    const time = args[1];
+      await user.timeout(time * 1000).catch(() => {});
+      return message.reply("⏳ User timed out");
+    }
 
-    if (!user || !time) return message.reply("Usage: /timeout @user seconds");
+    // ================= WARN SYSTEM =================
+    if (cmd === "warn") {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
+        return message.reply("❌ No permission");
 
-    await user.timeout(time * 1000);
-    return message.reply("User timed out");
-  }
+      const user = message.mentions.users.first();
+      const reason = args.slice(1).join(" ") || "No reason";
 
-  // ================= WARN SYSTEM =================
+      if (!user) return message.reply("Usage: /warn @user reason");
 
-  if (cmd === "warn") {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
-      return message.reply("No permission");
+      if (!warnings.has(user.id)) warnings.set(user.id, []);
 
-    const user = message.mentions.users.first();
-    const reason = args.slice(1).join(" ") || "No reason";
+      warnings.get(user.id).push({
+        reason,
+        moderator: message.author.tag,
+        date: new Date().toLocaleString()
+      });
 
-    if (!user) return message.reply("Usage: /warn @user reason");
+      return message.reply(`⚠️ Warned ${user.tag}`);
+    }
 
-    if (!warnings.has(user.id)) warnings.set(user.id, []);
+    if (cmd === "warnings") {
+      const user = message.mentions.users.first() || message.author;
 
-    warnings.get(user.id).push({
-      reason,
-      moderator: message.author.tag,
-      date: new Date().toLocaleString()
-    });
+      const data = warnings.get(user.id);
 
-    return message.reply(`⚠️ ${user.tag} warned`);
-  }
+      if (!data || data.length === 0)
+        return message.reply("✅ No warnings");
 
-  if (cmd === "warnings") {
-    const user = message.mentions.users.first() || message.author;
+      let text = `⚠️ Warnings for ${user.tag}\n\n`;
 
-    const data = warnings.get(user.id);
+      data.forEach((w, i) => {
+        text += `#${i + 1}\nReason: ${w.reason}\nBy: ${w.moderator}\nDate: ${w.date}\n\n`;
+      });
 
-    if (!data || data.length === 0)
-      return message.reply("No warnings");
+      return message.reply(text);
+    }
 
-    let text = `⚠️ Warnings for ${user.tag}\n\n`;
+    // ================= UTILITY =================
+    if (cmd === "avatar") {
+      const user = message.mentions.users.first() || message.author;
+      return message.reply(user.displayAvatarURL());
+    }
 
-    data.forEach((w, i) => {
-      text += `#${i + 1}\nReason: ${w.reason}\nBy: ${w.moderator}\nDate: ${w.date}\n\n`;
-    });
+    if (cmd === "userinfo") {
+      const user = message.mentions.users.first() || message.author;
+      return message.reply(`User: ${user.tag} | ID: ${user.id}`);
+    }
 
-    return message.reply(text);
-  }
+    if (cmd === "serverinfo") {
+      return message.reply(
+        `Server: ${message.guild.name}\nMembers: ${message.guild.memberCount}`
+      );
+    }
 
-  // ================= UTILITY =================
+    // ================= GIVEAWAY (BASIC) =================
+    if (cmd === "gstart") {
+      const prize = args.join(" ");
+      if (!prize) return message.reply("Give prize");
 
-  if (cmd === "serverinfo") {
-    return message.reply(`Server: ${message.guild.name}\nMembers: ${message.guild.memberCount}`);
-  }
+      const msg = await message.channel.send(
+        `🎁 GIVEAWAY\nPrize: ${prize}\nReact 🎉`
+      );
 
-  if (cmd === "userinfo") {
-    const user = message.mentions.users.first() || message.author;
-    return message.reply(`User: ${user.tag} | ID: ${user.id}`);
-  }
+      await msg.react("🎉");
+    }
 
-  if (cmd === "avatar") {
-    const user = message.mentions.users.first() || message.author;
-    return message.reply(user.displayAvatarURL());
-  }
+    if (cmd === "gend") {
+      return message.reply("🎁 Giveaway ended (manual)");
+    }
 
-  // ================= ROBLOX (PLACEHOLDER) =================
+    // ================= DEFAULT =================
+    if (cmd) {
+      return message.reply("❓ Unknown command");
+    }
 
-  if (cmd === "robloxuser") {
-    const name = args[0];
-    if (!name) return message.reply("Enter username");
-    return message.reply(`Roblox search: ${name}`);
-  }
-
-  if (cmd === "bloxfruitstock") {
-    return message.reply("🍎 Stock system requires API");
-  }
-
-  if (cmd === "gamepass") {
-    return message.reply("🎮 Gamepass lookup requires API");
-  }
-
-  // ================= GIVEAWAY (SIMPLE) =================
-
-  if (cmd === "gstart") {
-    const prize = args.join(" ");
-    if (!prize) return message.reply("Give prize");
-
-    const msg = await message.channel.send(
-      `🎁 GIVEAWAY\nPrize: ${prize}\nReact 🎉`
-    );
-
-    await msg.react("🎉");
-  }
-
-  if (cmd === "greroll") {
-    return message.reply("Reroll needs advanced system");
-  }
-
-  if (cmd === "gend") {
-    return message.reply("Giveaway ended");
+  } catch (err) {
+    console.log("⚠️ Command Error:", err);
+    message.reply("❌ Error occurred but bot is still running").catch(() => {});
   }
 });
-
-// ================= LOGIN =================
-client.login(process.MTUwNzU5MDk1ODgzNjA4ODkzMg.GF8HVn.ns0O8ciqF4BtttrDIfrAx-Ploy3hmzyF7K-KgkTOKEN);
