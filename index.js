@@ -3,25 +3,18 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 
-const {
-  Client,
-  GatewayIntentBits
-} = require("discord.js");
+const { Client, GatewayIntentBits } = require("discord.js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
 app.get("/", (req, res) => {
-  res.send("Bot is running!");
+  res.send("Running");
 });
 
 app.listen(3000, () => {
-  console.log("Web server running on port 3000");
-});
-
-client.once("clientReady", () => {
-  console.log(`${client.user.tag} is Online!`);
+  console.log("Web running");
 });
 
 client.on("interactionCreate", async interaction => {
@@ -30,13 +23,9 @@ client.on("interactionCreate", async interaction => {
 
   if (interaction.commandName === "help") {
 
-    await interaction.reply(`
-📜 BloxDen Commands
+    console.log("Help command used");
 
-/help
-/ping
-/joke
-    `);
+    await interaction.reply("Hello!");
 
   }
 
