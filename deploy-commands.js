@@ -30,6 +30,10 @@ new SlashCommandBuilder()
 .setDescription("Get a random quote"),
 
 new SlashCommandBuilder()
+.setName("serverinfo")
+.setDescription("Show server info"),
+
+new SlashCommandBuilder()
 .setName("rps")
 .setDescription("Rock Paper Scissors")
 .addStringOption(option =>
@@ -50,6 +54,62 @@ new SlashCommandBuilder()
 option.setName("number")
 .setDescription("Choose a number")
 .setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("ban")
+.setDescription("Ban a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to ban")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+.setRequired(false)
+),
+
+new SlashCommandBuilder()
+.setName("kick")
+.setDescription("Kick a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to kick")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+.setRequired(false)
+),
+
+new SlashCommandBuilder()
+.setName("timeout")
+.setDescription("Timeout a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to timeout")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("minutes")
+.setDescription("Timeout minutes")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("warn")
+.setDescription("Warn a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to warn")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+.setRequired(false)
 )
 
 ].map(command => command.toJSON());
