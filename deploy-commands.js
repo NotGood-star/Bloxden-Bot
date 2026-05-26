@@ -10,106 +10,31 @@ new SlashCommandBuilder()
 .setDescription("Help menu"),
 
 new SlashCommandBuilder()
-.setName("ping")
-.setDescription("Check bot ping"),
-
-new SlashCommandBuilder()
-.setName("joke")
-.setDescription("Get a funny joke"),
-
-new SlashCommandBuilder()
-.setName("dice")
-.setDescription("Roll a dice"),
-
-new SlashCommandBuilder()
-.setName("coinflip")
-.setDescription("Flip a coin"),
-
-new SlashCommandBuilder()
-.setName("quote")
-.setDescription("Get a random quote"),
-
-new SlashCommandBuilder()
-.setName("serverinfo")
-.setDescription("Show server info"),
-
-new SlashCommandBuilder()
-.setName("rps")
-.setDescription("Rock Paper Scissors")
+.setName("giveaway")
+.setDescription("Start a giveaway")
 .addStringOption(option =>
-option.setName("choice")
-.setDescription("rock / paper / scissors")
-.setRequired(true)
-.addChoices(
-{ name: "rock", value: "rock" },
-{ name: "paper", value: "paper" },
-{ name: "scissors", value: "scissors" }
-)
-),
-
-new SlashCommandBuilder()
-.setName("guess")
-.setDescription("Guess number 1-10")
-.addIntegerOption(option =>
-option.setName("number")
-.setDescription("Choose a number")
-.setRequired(true)
-),
-
-new SlashCommandBuilder()
-.setName("ban")
-.setDescription("Ban a user")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User to ban")
-.setRequired(true)
-)
-.addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
-.setRequired(false)
-),
-
-new SlashCommandBuilder()
-.setName("kick")
-.setDescription("Kick a user")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User to kick")
-.setRequired(true)
-)
-.addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
-.setRequired(false)
-),
-
-new SlashCommandBuilder()
-.setName("timeout")
-.setDescription("Timeout a user")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User to timeout")
+option.setName("prize")
+.setDescription("Giveaway prize")
 .setRequired(true)
 )
 .addIntegerOption(option =>
-option.setName("minutes")
-.setDescription("Timeout minutes")
+option.setName("duration")
+.setDescription("Duration in minutes")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("winners")
+.setDescription("Number of winners")
 .setRequired(true)
 ),
 
 new SlashCommandBuilder()
-.setName("warn")
-.setDescription("Warn a user")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User to warn")
-.setRequired(true)
-)
+.setName("reroll")
+.setDescription("Reroll a giveaway")
 .addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
-.setRequired(false)
+option.setName("messageid")
+.setDescription("Giveaway message ID")
+.setRequired(true)
 )
 
 ].map(command => command.toJSON());
