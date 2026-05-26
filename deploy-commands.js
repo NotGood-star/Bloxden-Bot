@@ -10,11 +10,111 @@ new SlashCommandBuilder()
 .setDescription("Help menu"),
 
 new SlashCommandBuilder()
+.setName("ping")
+.setDescription("Check bot ping"),
+
+new SlashCommandBuilder()
+.setName("joke")
+.setDescription("Get a funny joke"),
+
+new SlashCommandBuilder()
+.setName("dice")
+.setDescription("Roll a dice"),
+
+new SlashCommandBuilder()
+.setName("coinflip")
+.setDescription("Flip a coin"),
+
+new SlashCommandBuilder()
+.setName("quote")
+.setDescription("Get a random quote"),
+
+new SlashCommandBuilder()
+.setName("serverinfo")
+.setDescription("Show server info"),
+
+new SlashCommandBuilder()
+.setName("rps")
+.setDescription("Rock Paper Scissors")
+.addStringOption(option =>
+option.setName("choice")
+.setDescription("rock / paper / scissors")
+.setRequired(true)
+.addChoices(
+{ name: "rock", value: "rock" },
+{ name: "paper", value: "paper" },
+{ name: "scissors", value: "scissors" }
+)
+),
+
+new SlashCommandBuilder()
+.setName("guess")
+.setDescription("Guess number 1-10")
+.addIntegerOption(option =>
+option.setName("number")
+.setDescription("Choose number")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("ban")
+.setDescription("Ban a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to ban")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+),
+
+new SlashCommandBuilder()
+.setName("kick")
+.setDescription("Kick a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User to kick")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+),
+
+new SlashCommandBuilder()
+.setName("timeout")
+.setDescription("Timeout a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("minutes")
+.setDescription("Minutes")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("warn")
+.setDescription("Warn a user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+)
+.addStringOption(option =>
+option.setName("reason")
+.setDescription("Reason")
+),
+
+new SlashCommandBuilder()
 .setName("giveaway")
-.setDescription("Start a giveaway")
+.setDescription("Start giveaway")
 .addStringOption(option =>
 option.setName("prize")
-.setDescription("Giveaway prize")
+.setDescription("Prize")
 .setRequired(true)
 )
 .addIntegerOption(option =>
@@ -30,7 +130,7 @@ option.setName("winners")
 
 new SlashCommandBuilder()
 .setName("reroll")
-.setDescription("Reroll a giveaway")
+.setDescription("Reroll giveaway")
 .addStringOption(option =>
 option.setName("messageid")
 .setDescription("Giveaway message ID")
