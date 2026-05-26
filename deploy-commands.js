@@ -119,7 +119,7 @@ option.setName("prize")
 )
 .addIntegerOption(option =>
 option.setName("duration")
-.setDescription("Duration")
+.setDescription("Minutes")
 .setRequired(true)
 )
 .addIntegerOption(option =>
@@ -143,6 +143,32 @@ new SlashCommandBuilder()
 .addRoleOption(option =>
 option.setName("role")
 .setDescription("Role")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("balance")
+.setDescription("Check balance")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+),
+
+new SlashCommandBuilder()
+.setName("daily")
+.setDescription("Claim daily reward"),
+
+new SlashCommandBuilder()
+.setName("pay")
+.setDescription("Pay coins")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("amount")
+.setDescription("Amount")
 .setRequired(true)
 )
 
