@@ -10,7 +10,8 @@ PermissionsBitField,
 EmbedBuilder,
 ActionRowBuilder,
 ButtonBuilder,
-ButtonStyle
+ButtonStyle,
+ChannelType
 } = require("discord.js");
 
 const app = express();
@@ -19,22 +20,27 @@ const client = new Client({
 intents: [
 GatewayIntentBits.Guilds,
 GatewayIntentBits.GuildMessages,
-GatewayIntentBits.GuildMembers
+GatewayIntentBits.GuildMembers,
+GatewayIntentBits.MessageContent
 ]
 });
 
 const giveaways = new Map();
 
 let warnings = {};
+let economy = {};
+let levels = {};
 
 if (fs.existsSync("warnings.json")) {
 warnings = JSON.parse(fs.readFileSync("warnings.json"));
 }
 
-let economy = {};
-
 if (fs.existsSync("economy.json")) {
 economy = JSON.parse(fs.readFileSync("economy.json"));
+}
+
+if (fs.existsSync("levels.json")) {
+levels = JSON.parse(fs.readFileSync("levels.json"));
 }
 
 app.get("/", (req, res) => {
@@ -47,6 +53,43 @@ console.log("Web server running on port 3000");
 
 client.once("clientReady", () => {
 console.log(`${client.user.tag} is Online!`);
+});
+
+client.on("messageCreate", async message => {
+
+if (message.author.bot) return;
+
+if (!levels[message.author.id]) {
+
+levels[message.author.id] = {
+xp: 0,
+level: 1
+};
+
+}
+
+levels[message.author.id].xp += 10;
+
+const needed =
+levels[message.author.id].level * 100;
+
+if (levels[message.author.id].xp >= needed) {
+
+levels[message.author.id].xp = 0;
+
+levels[message.author.id].level += 1;
+
+message.channel.send(
+`🎉 ${message.author} leveled up to level ${levels[message.author.id].level}!`
+);
+
+}
+
+fs.writeFileSync(
+"levels.json",
+JSON.stringify(levels, null, 2)
+);
+
 });
 
 client.on("interactionCreate", async interaction => {
@@ -87,6 +130,13 @@ await interaction.reply(`
 /daily
 /pay
 
+🏆 Levels:
+/rank
+/leaderboard
+
+🎫 Tickets:
+/ticket
+
 📊 Info:
 /serverinfo
 `);
@@ -94,9 +144,7 @@ await interaction.reply(`
 }
 
 else if (interaction.commandName === "ping") {
-
 await interaction.reply("🏓 Pong!");
-
 }
 
 else if (interaction.commandName === "joke") {
@@ -157,7 +205,8 @@ else if (interaction.commandName === "rps") {
 const userChoice =
 interaction.options.getString("choice");
 
-const choices = ["rock", "paper", "scissors"];
+const choices =
+["rock", "paper", "scissors"];
 
 const botChoice =
 choices[Math.floor(Math.random() * choices.length)];
@@ -203,20 +252,13 @@ return interaction.reply("❌ No permission.");
 const user =
 interaction.options.getUser("user");
 
-const reason =
-interaction.options.getString("reason") || "No reason";
-
 const member =
 interaction.guild.members.cache.get(user.id);
 
-if (!member) {
-return interaction.reply("❌ User not found.");
-}
-
-await member.ban({ reason });
+await member.ban();
 
 await interaction.reply(
-`🔨 ${user.tag} banned.\nReason: ${reason}`
+`🔨 ${user.tag} banned.`
 );
 
 }
@@ -232,20 +274,13 @@ return interaction.reply("❌ No permission.");
 const user =
 interaction.options.getUser("user");
 
-const reason =
-interaction.options.getString("reason") || "No reason";
-
 const member =
 interaction.guild.members.cache.get(user.id);
 
-if (!member) {
-return interaction.reply("❌ User not found.");
-}
-
-await member.kick(reason);
+await member.kick();
 
 await interaction.reply(
-`👢 ${user.tag} kicked.\nReason: ${reason}`
+`👢 ${user.tag} kicked.`
 );
 
 }
@@ -266,10 +301,6 @@ interaction.options.getInteger("minutes");
 
 const member =
 interaction.guild.members.cache.get(user.id);
-
-if (!member) {
-return interaction.reply("❌ User not found.");
-}
 
 await member.timeout(minutes * 60 * 1000);
 
@@ -315,66 +346,52 @@ interaction.options.getInteger("duration");
 const winners =
 interaction.options.getInteger("winners");
 
-const endTime =
-Date.now() + duration * 60 * 1000;
-
 const embed = new EmbedBuilder()
 .setTitle("🎉 GIVEAWAY 🎉")
 .setDescription(`
 Prize: **${prize}**
-
 Winners: **${winners}**
-
-Ends: <t:${Math.floor(endTime / 1000)}:R>
-
-Click button below to join!
+Duration: **${duration} minutes**
 `)
-.setFooter({
-text: `Hosted by ${interaction.user.tag}`
-});
+.setColor("Blue");
 
 const button =
 new ButtonBuilder()
 .setCustomId("join_giveaway")
-.setLabel("🎉 Join Giveaway")
+.setLabel("🎉 Join")
 .setStyle(ButtonStyle.Primary);
 
 const row =
 new ActionRowBuilder().addComponents(button);
 
-const message =
+const msg =
 await interaction.reply({
 embeds: [embed],
 components: [row],
 fetchReply: true
 });
 
-giveaways.set(message.id, {
+giveaways.set(msg.id, {
 prize,
 winners,
-entries: [],
-ended: false
+entries: []
 });
 
 setTimeout(async () => {
 
-const giveaway =
-giveaways.get(message.id);
+const data =
+giveaways.get(msg.id);
 
-if (!giveaway || giveaway.ended) return;
+if (!data) return;
 
-giveaway.ended = true;
-
-if (giveaway.entries.length === 0) {
-
+if (data.entries.length === 0) {
 return interaction.followUp(
-`❌ No participants for ${prize}`
+`❌ No entries for ${prize}`
 );
-
 }
 
 const shuffled =
-giveaway.entries.sort(() => 0.5 - Math.random());
+data.entries.sort(() => 0.5 - Math.random());
 
 const winnersList =
 shuffled.slice(0, winners);
@@ -389,23 +406,19 @@ interaction.followUp(
 
 else if (interaction.commandName === "reroll") {
 
-const messageId =
+const id =
 interaction.options.getString("messageid");
 
-const giveaway =
-giveaways.get(messageId);
+const data =
+giveaways.get(id);
 
-if (!giveaway) {
+if (!data) {
 return interaction.reply("❌ Giveaway not found.");
 }
 
-if (giveaway.entries.length === 0) {
-return interaction.reply("❌ No entries.");
-}
-
 const winner =
-giveaway.entries[
-Math.floor(Math.random() * giveaway.entries.length)
+data.entries[
+Math.floor(Math.random() * data.entries.length)
 ];
 
 await interaction.reply(
@@ -429,15 +442,8 @@ const row =
 new ActionRowBuilder()
 .addComponents(button);
 
-const embed =
-new EmbedBuilder()
-.setTitle("🎭 Reaction Roles")
-.setDescription(
-`Click button below to get/remove ${role}`
-);
-
 await interaction.reply({
-embeds: [embed],
+content: "🎭 Reaction Role Created",
 components: [row]
 });
 
@@ -515,47 +521,27 @@ interaction.options.getUser("user");
 const amount =
 interaction.options.getInteger("amount");
 
-if (amount <= 0) {
-
-return interaction.reply({
-content: "❌ Invalid amount.",
-ephemeral: true
-});
-
-}
-
 if (!economy[interaction.user.id]) {
-
 economy[interaction.user.id] = {
 coins: 0,
 lastDaily: 0
 };
-
 }
 
 if (!economy[target.id]) {
-
 economy[target.id] = {
 coins: 0,
 lastDaily: 0
 };
-
 }
 
 if (
-economy[interaction.user.id].coins
-< amount
+economy[interaction.user.id].coins < amount
 ) {
-
-return interaction.reply({
-content: "❌ Not enough coins.",
-ephemeral: true
-});
-
+return interaction.reply("❌ Not enough coins.");
 }
 
 economy[interaction.user.id].coins -= amount;
-
 economy[target.id].coins += amount;
 
 fs.writeFileSync(
@@ -569,6 +555,77 @@ await interaction.reply(
 
 }
 
+else if (interaction.commandName === "rank") {
+
+if (!levels[interaction.user.id]) {
+
+levels[interaction.user.id] = {
+xp: 0,
+level: 1
+};
+
+}
+
+await interaction.reply(
+`🏆 Level: ${levels[interaction.user.id].level}\n⭐ XP: ${levels[interaction.user.id].xp}`
+);
+
+}
+
+else if (interaction.commandName === "leaderboard") {
+
+const sorted =
+Object.entries(levels)
+.sort((a, b) => b[1].level - a[1].level)
+.slice(0, 10);
+
+let text = "";
+
+for (let i = 0; i < sorted.length; i++) {
+
+const user =
+await client.users.fetch(sorted[i][0]);
+
+text += `${i + 1}. ${user.username} — Level ${sorted[i][1].level}\n`;
+
+}
+
+await interaction.reply(
+`🏆 Leaderboard\n\n${text}`
+);
+
+}
+
+else if (interaction.commandName === "ticket") {
+
+const channel =
+await interaction.guild.channels.create({
+name: `ticket-${interaction.user.username}`,
+type: ChannelType.GuildText
+});
+
+await channel.permissionOverwrites.create(
+interaction.guild.roles.everyone,
+{
+ViewChannel: false
+}
+);
+
+await channel.permissionOverwrites.create(
+interaction.user.id,
+{
+ViewChannel: true,
+SendMessages: true
+}
+);
+
+await interaction.reply({
+content: `🎫 Ticket created: ${channel}`,
+ephemeral: true
+});
+
+}
+
 }
 
 else if (interaction.isButton()) {
@@ -579,21 +636,17 @@ const giveaway =
 giveaways.get(interaction.message.id);
 
 if (!giveaway) {
-
 return interaction.reply({
 content: "❌ Giveaway expired.",
 ephemeral: true
 });
-
 }
 
 if (giveaway.entries.includes(interaction.user.toString())) {
-
 return interaction.reply({
 content: "❌ Already joined.",
 ephemeral: true
 });
-
 }
 
 giveaway.entries.push(
@@ -614,15 +667,6 @@ interaction.customId.replace("rr_", "");
 
 const role =
 interaction.guild.roles.cache.get(roleId);
-
-if (!role) {
-
-return interaction.reply({
-content: "❌ Role not found.",
-ephemeral: true
-});
-
-}
 
 const member = interaction.member;
 
