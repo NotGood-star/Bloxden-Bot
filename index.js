@@ -1,8 +1,6 @@
 require("dotenv").config();
 
 const express = require("express");
-const app = express();
-
 const fs = require("fs");
 
 const {
@@ -15,11 +13,13 @@ ButtonBuilder,
 ButtonStyle
 } = require("discord.js");
 
+const app = express();
+
 const client = new Client({
 intents: [
 GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMembers,
-GatewayIntentBits.GuildMessages
+GatewayIntentBits.GuildMessages,
+GatewayIntentBits.GuildMembers
 ]
 });
 
@@ -29,6 +29,12 @@ let warnings = {};
 
 if (fs.existsSync("warnings.json")) {
 warnings = JSON.parse(fs.readFileSync("warnings.json"));
+}
+
+let economy = {};
+
+if (fs.existsSync("economy.json")) {
+economy = JSON.parse(fs.readFileSync("economy.json"));
 }
 
 app.get("/", (req, res) => {
@@ -54,7 +60,7 @@ if (interaction.commandName === "help") {
 await interaction.reply(`
 📜 BloxDen Commands
 
-/help
+🎮 Fun:
 /ping
 /joke
 /dice
@@ -62,13 +68,27 @@ await interaction.reply(`
 /quote
 /rps
 /guess
-/serverinfo
+
+🛡️ Moderation:
 /ban
 /kick
 /timeout
 /warn
+
+🎁 Giveaway:
 /giveaway
 /reroll
+
+🎭 Roles:
+/reactionrole
+
+💰 Economy:
+/balance
+/daily
+/pay
+
+📊 Info:
+/serverinfo
 `);
 
 }
@@ -394,6 +414,161 @@ await interaction.reply(
 
 }
 
+else if (interaction.commandName === "reactionrole") {
+
+const role =
+interaction.options.getRole("role");
+
+const button =
+new ButtonBuilder()
+.setCustomId(`rr_${role.id}`)
+.setLabel(`Get ${role.name}`)
+.setStyle(ButtonStyle.Success);
+
+const row =
+new ActionRowBuilder()
+.addComponents(button);
+
+const embed =
+new EmbedBuilder()
+.setTitle("🎭 Reaction Roles")
+.setDescription(
+`Click button below to get/remove ${role}`
+);
+
+await interaction.reply({
+embeds: [embed],
+components: [row]
+});
+
+}
+
+else if (interaction.commandName === "balance") {
+
+const target =
+interaction.options.getUser("user") ||
+interaction.user;
+
+if (!economy[target.id]) {
+
+economy[target.id] = {
+coins: 0,
+lastDaily: 0
+};
+
+}
+
+await interaction.reply(
+`💰 ${target.username} has ${economy[target.id].coins} coins`
+);
+
+}
+
+else if (interaction.commandName === "daily") {
+
+if (!economy[interaction.user.id]) {
+
+economy[interaction.user.id] = {
+coins: 0,
+lastDaily: 0
+};
+
+}
+
+const now = Date.now();
+
+const cooldown =
+24 * 60 * 60 * 1000;
+
+if (
+now - economy[interaction.user.id].lastDaily
+< cooldown
+) {
+
+return interaction.reply({
+content: "⏳ Daily already claimed.",
+ephemeral: true
+});
+
+}
+
+economy[interaction.user.id].coins += 500;
+
+economy[interaction.user.id].lastDaily = now;
+
+fs.writeFileSync(
+"economy.json",
+JSON.stringify(economy, null, 2)
+);
+
+await interaction.reply(
+"💰 You got 500 coins!"
+);
+
+}
+
+else if (interaction.commandName === "pay") {
+
+const target =
+interaction.options.getUser("user");
+
+const amount =
+interaction.options.getInteger("amount");
+
+if (amount <= 0) {
+
+return interaction.reply({
+content: "❌ Invalid amount.",
+ephemeral: true
+});
+
+}
+
+if (!economy[interaction.user.id]) {
+
+economy[interaction.user.id] = {
+coins: 0,
+lastDaily: 0
+};
+
+}
+
+if (!economy[target.id]) {
+
+economy[target.id] = {
+coins: 0,
+lastDaily: 0
+};
+
+}
+
+if (
+economy[interaction.user.id].coins
+< amount
+) {
+
+return interaction.reply({
+content: "❌ Not enough coins.",
+ephemeral: true
+});
+
+}
+
+economy[interaction.user.id].coins -= amount;
+
+economy[target.id].coins += amount;
+
+fs.writeFileSync(
+"economy.json",
+JSON.stringify(economy, null, 2)
+);
+
+await interaction.reply(
+`💸 Sent ${amount} coins to ${target.username}`
+);
+
+}
+
 }
 
 else if (interaction.isButton()) {
@@ -427,6 +602,45 @@ interaction.user.toString()
 
 await interaction.reply({
 content: "🎉 Joined giveaway!",
+ephemeral: true
+});
+
+}
+
+else if (interaction.customId.startsWith("rr_")) {
+
+const roleId =
+interaction.customId.replace("rr_", "");
+
+const role =
+interaction.guild.roles.cache.get(roleId);
+
+if (!role) {
+
+return interaction.reply({
+content: "❌ Role not found.",
+ephemeral: true
+});
+
+}
+
+const member = interaction.member;
+
+if (member.roles.cache.has(role.id)) {
+
+await member.roles.remove(role);
+
+return interaction.reply({
+content: `❌ Removed ${role.name}`,
+ephemeral: true
+});
+
+}
+
+await member.roles.add(role);
+
+await interaction.reply({
+content: `✅ Added ${role.name}`,
 ephemeral: true
 });
 
