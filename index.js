@@ -8,15 +8,22 @@ const fs = require("fs");
 const {
 Client,
 GatewayIntentBits,
-PermissionsBitField
+PermissionsBitField,
+EmbedBuilder,
+ActionRowBuilder,
+ButtonBuilder,
+ButtonStyle
 } = require("discord.js");
 
 const client = new Client({
 intents: [
 GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMembers
+GatewayIntentBits.GuildMembers,
+GatewayIntentBits.GuildMessages
 ]
 });
+
+const giveaways = new Map();
 
 let warnings = {};
 
@@ -38,9 +45,9 @@ console.log(`${client.user.tag} is Online!`);
 
 client.on("interactionCreate", async interaction => {
 
-if (!interaction.isChatInputCommand()) return;
-
 try {
+
+if (interaction.isChatInputCommand()) {
 
 if (interaction.commandName === "help") {
 
@@ -60,6 +67,8 @@ await interaction.reply(`
 /kick
 /timeout
 /warn
+/giveaway
+/reroll
 `);
 
 }
@@ -75,31 +84,28 @@ else if (interaction.commandName === "joke") {
 const jokes = [
 "😂 Discord mods never sleep.",
 "🤣 Roblox lag stronger than WIFI.",
-"😂 Chicken escaped Roblox campers."
+"😂 Chicken escaped campers."
 ];
 
-const joke =
-jokes[Math.floor(Math.random() * jokes.length)];
-
-await interaction.reply(joke);
+await interaction.reply(
+jokes[Math.floor(Math.random() * jokes.length)]
+);
 
 }
 
 else if (interaction.commandName === "dice") {
 
-const dice =
-Math.floor(Math.random() * 6) + 1;
-
-await interaction.reply(`🎲 You rolled ${dice}`);
+await interaction.reply(
+`🎲 You rolled ${Math.floor(Math.random() * 6) + 1}`
+);
 
 }
 
 else if (interaction.commandName === "coinflip") {
 
-const result =
-Math.random() < 0.5 ? "Heads" : "Tails";
-
-await interaction.reply(`🪙 ${result}`);
+await interaction.reply(
+`🪙 ${Math.random() < 0.5 ? "Heads" : "Tails"}`
+);
 
 }
 
@@ -111,17 +117,16 @@ const quotes = [
 "💪 Stay strong."
 ];
 
-const quote =
-quotes[Math.floor(Math.random() * quotes.length)];
-
-await interaction.reply(quote);
+await interaction.reply(
+quotes[Math.floor(Math.random() * quotes.length)]
+);
 
 }
 
 else if (interaction.commandName === "serverinfo") {
 
 await interaction.reply(`
-🏠 Server Name: ${interaction.guild.name}
+🏠 Server: ${interaction.guild.name}
 👥 Members: ${interaction.guild.memberCount}
 `);
 
@@ -132,11 +137,7 @@ else if (interaction.commandName === "rps") {
 const userChoice =
 interaction.options.getString("choice");
 
-const choices = [
-"rock",
-"paper",
-"scissors"
-];
+const choices = ["rock", "paper", "scissors"];
 
 const botChoice =
 choices[Math.floor(Math.random() * choices.length)];
@@ -283,14 +284,164 @@ await interaction.reply(
 
 }
 
+else if (interaction.commandName === "giveaway") {
+
+const prize =
+interaction.options.getString("prize");
+
+const duration =
+interaction.options.getInteger("duration");
+
+const winners =
+interaction.options.getInteger("winners");
+
+const endTime =
+Date.now() + duration * 60 * 1000;
+
+const embed = new EmbedBuilder()
+.setTitle("🎉 GIVEAWAY 🎉")
+.setDescription(`
+Prize: **${prize}**
+
+Winners: **${winners}**
+
+Ends: <t:${Math.floor(endTime / 1000)}:R>
+
+Click button below to join!
+`)
+.setFooter({
+text: `Hosted by ${interaction.user.tag}`
+});
+
+const button =
+new ButtonBuilder()
+.setCustomId("join_giveaway")
+.setLabel("🎉 Join Giveaway")
+.setStyle(ButtonStyle.Primary);
+
+const row =
+new ActionRowBuilder().addComponents(button);
+
+const message =
+await interaction.reply({
+embeds: [embed],
+components: [row],
+fetchReply: true
+});
+
+giveaways.set(message.id, {
+prize,
+winners,
+entries: [],
+ended: false
+});
+
+setTimeout(async () => {
+
+const giveaway =
+giveaways.get(message.id);
+
+if (!giveaway || giveaway.ended) return;
+
+giveaway.ended = true;
+
+if (giveaway.entries.length === 0) {
+
+return interaction.followUp(
+`❌ No participants for ${prize}`
+);
+
+}
+
+const shuffled =
+giveaway.entries.sort(() => 0.5 - Math.random());
+
+const winnersList =
+shuffled.slice(0, winners);
+
+interaction.followUp(
+`🎉 Winners of ${prize}:\n${winnersList.join("\n")}`
+);
+
+}, duration * 60 * 1000);
+
+}
+
+else if (interaction.commandName === "reroll") {
+
+const messageId =
+interaction.options.getString("messageid");
+
+const giveaway =
+giveaways.get(messageId);
+
+if (!giveaway) {
+return interaction.reply("❌ Giveaway not found.");
+}
+
+if (giveaway.entries.length === 0) {
+return interaction.reply("❌ No entries.");
+}
+
+const winner =
+giveaway.entries[
+Math.floor(Math.random() * giveaway.entries.length)
+];
+
+await interaction.reply(
+`🎉 New winner: ${winner}`
+);
+
+}
+
+}
+
+else if (interaction.isButton()) {
+
+if (interaction.customId === "join_giveaway") {
+
+const giveaway =
+giveaways.get(interaction.message.id);
+
+if (!giveaway) {
+
+return interaction.reply({
+content: "❌ Giveaway expired.",
+ephemeral: true
+});
+
+}
+
+if (giveaway.entries.includes(interaction.user.toString())) {
+
+return interaction.reply({
+content: "❌ Already joined.",
+ephemeral: true
+});
+
+}
+
+giveaway.entries.push(
+interaction.user.toString()
+);
+
+await interaction.reply({
+content: "🎉 Joined giveaway!",
+ephemeral: true
+});
+
+}
+
+}
+
 } catch (error) {
 
 console.error(error);
 
 if (!interaction.replied) {
 
-await interaction.reply({
-content: "❌ Error running command.",
+interaction.reply({
+content: "❌ Error occurred.",
 ephemeral: true
 });
 
