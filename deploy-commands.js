@@ -11,7 +11,7 @@ new SlashCommandBuilder()
 
 new SlashCommandBuilder()
 .setName("ping")
-.setDescription("Check ping"),
+.setDescription("Ping bot"),
 
 new SlashCommandBuilder()
 .setName("joke")
@@ -63,10 +63,6 @@ new SlashCommandBuilder()
 option.setName("user")
 .setDescription("User")
 .setRequired(true)
-)
-.addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
 ),
 
 new SlashCommandBuilder()
@@ -76,10 +72,6 @@ new SlashCommandBuilder()
 option.setName("user")
 .setDescription("User")
 .setRequired(true)
-)
-.addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
 ),
 
 new SlashCommandBuilder()
@@ -139,7 +131,7 @@ option.setName("messageid")
 
 new SlashCommandBuilder()
 .setName("reactionrole")
-.setDescription("Create reaction role")
+.setDescription("Reaction role")
 .addRoleOption(option =>
 option.setName("role")
 .setDescription("Role")
@@ -156,7 +148,7 @@ option.setName("user")
 
 new SlashCommandBuilder()
 .setName("daily")
-.setDescription("Claim daily reward"),
+.setDescription("Daily coins"),
 
 new SlashCommandBuilder()
 .setName("pay")
@@ -181,10 +173,101 @@ new SlashCommandBuilder()
 .setDescription("Leaderboard"),
 
 new SlashCommandBuilder()
-.setName("ticket")
-.setDescription("Create support ticket")
+.setName("addxp")
+.setDescription("Add XP")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("amount")
+.setDescription("XP")
+.setRequired(true)
+),
 
-].map(command => command.toJSON());
+new SlashCommandBuilder()
+.setName("removexp")
+.setDescription("Remove XP")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option.setName("amount")
+.setDescription("XP")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("setlevelchannel")
+.setDescription("Set level channel")
+.addChannelOption(option =>
+option.setName("channel")
+.setDescription("Channel")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("ticket")
+.setDescription("Create ticket"),
+
+new SlashCommandBuilder()
+.setName("closeticket")
+.setDescription("Close ticket"),
+
+new SlashCommandBuilder()
+.setName("setticketchannel")
+.setDescription("Set ticket category")
+.addChannelOption(option =>
+option.setName("channel")
+.setDescription("Channel")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("avatar")
+.setDescription("Show avatar")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+),
+
+new SlashCommandBuilder()
+.setName("invite")
+.setDescription("Show invites")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+),
+
+new SlashCommandBuilder()
+.setName("resetinvites")
+.setDescription("Reset invites")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("inviteleaderboard")
+.setDescription("Invite leaderboard"),
+
+new SlashCommandBuilder()
+.setName("messages")
+.setDescription("Show messages")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+),
+
+new SlashCommandBuilder()
+.setName("messageleaderboard")
+.setDescription("Message leaderboard")
+
+].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
@@ -203,10 +286,10 @@ console.log("Slash commands registered!");
 
 process.exit(0);
 
-} catch (error) {
+} catch (err) {
 
-console.error(error);
+console.error(err);
 
 }
 
-})();
+})(); 
