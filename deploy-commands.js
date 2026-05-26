@@ -38,7 +38,7 @@ new SlashCommandBuilder()
 .setDescription("Rock Paper Scissors")
 .addStringOption(option =>
 option.setName("choice")
-.setDescription("Your choice")
+.setDescription("Choice")
 .setRequired(true)
 .addChoices(
 { name: "rock", value: "rock" },
@@ -49,10 +49,10 @@ option.setName("choice")
 
 new SlashCommandBuilder()
 .setName("guess")
-.setDescription("Guess 1-10")
+.setDescription("Guess number")
 .addIntegerOption(option =>
 option.setName("number")
-.setDescription("Your number")
+.setDescription("1-10")
 .setRequired(true)
 ),
 
@@ -170,7 +170,19 @@ option.setName("user")
 option.setName("amount")
 .setDescription("Amount")
 .setRequired(true)
-)
+),
+
+new SlashCommandBuilder()
+.setName("rank")
+.setDescription("Check level"),
+
+new SlashCommandBuilder()
+.setName("leaderboard")
+.setDescription("Leaderboard"),
+
+new SlashCommandBuilder()
+.setName("ticket")
+.setDescription("Create support ticket")
 
 ].map(command => command.toJSON());
 
