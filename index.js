@@ -1,149 +1,3 @@
-require("dotenv").config();
-
-const express = require("express");
-const fs = require("fs");
-
-const {
-Client,
-GatewayIntentBits,
-PermissionsBitField,
-EmbedBuilder,
-ActionRowBuilder,
-ButtonBuilder,
-ButtonStyle,
-ChannelType
-} = require("discord.js");
-
-const app = express();
-
-const client = new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.GuildMembers,
-GatewayIntentBits.MessageContent
-]
-});
-
-let economy = {};
-let levels = {};
-let invites = {};
-let messages = {};
-let warnings = {};
-let settings = {};
-
-if (fs.existsSync("economy.json")) {
-economy = JSON.parse(fs.readFileSync("economy.json"));
-}
-
-if (fs.existsSync("levels.json")) {
-levels = JSON.parse(fs.readFileSync("levels.json"));
-}
-
-if (fs.existsSync("invites.json")) {
-invites = JSON.parse(fs.readFileSync("invites.json"));
-}
-
-if (fs.existsSync("messages.json")) {
-messages = JSON.parse(fs.readFileSync("messages.json"));
-}
-
-if (fs.existsSync("warnings.json")) {
-warnings = JSON.parse(fs.readFileSync("warnings.json"));
-}
-
-if (fs.existsSync("settings.json")) {
-settings = JSON.parse(fs.readFileSync("settings.json"));
-}
-
-const giveaways = new Map();
-
-app.get("/", (req, res) => {
-res.send("Bot Running");
-});
-
-app.listen(3000, () => {
-console.log("Web server running on port 3000");
-});
-
-client.once("clientReady", () => {
-console.log(`${client.user.tag} is Online!`);
-});
-
-client.on("messageCreate", async message => {
-
-if (message.author.bot) return;
-
-if (!messages[message.author.id]) {
-messages[message.author.id] = 0;
-}
-
-messages[message.author.id]++;
-
-fs.writeFileSync(
-"messages.json",
-JSON.stringify(messages, null, 2)
-);
-
-if (!levels[message.author.id]) {
-levels[message.author.id] = {
-xp: 0,
-level: 1
-};
-}
-
-levels[message.author.id].xp += 10;
-
-const neededXP =
-levels[message.author.id].level * 100;
-
-if (levels[message.author.id].xp >= neededXP) {
-
-levels[message.author.id].xp = 0;
-levels[message.author.id].level++;
-
-if (settings.levelChannel) {
-
-const channel =
-message.guild.channels.cache.get(
-settings.levelChannel
-);
-
-if (channel) {
-channel.send(
-`🎉 ${message.author} leveled up to Level ${levels[message.author.id].level}`
-);
-}
-
-}
-
-}
-
-fs.writeFileSync(
-"levels.json",
-JSON.stringify(levels, null, 2)
-);
-
-});
-
-client.on("guildMemberAdd", member => {
-
-const inviter =
-member.guild.members.cache.random();
-
-if (!invites[inviter.id]) {
-invites[inviter.id] = 0;
-}
-
-invites[inviter.id]++;
-
-fs.writeFileSync(
-"invites.json",
-JSON.stringify(invites, null, 2)
-);
-
-});
-
 client.on("interactionCreate", async interaction => {
 
 try {
@@ -167,21 +21,7 @@ await interaction.reply(`
 /dice
 /coinflip
 /quote
-/rps
-/guess
-
-🛡️ Moderation:
-/ban
-/kick
-/timeout
-/warn
-
-🎁 Giveaway:
-/giveaway
-/reroll
-
-🎭 Roles:
-/reactionrole
+/funfact
 
 💰 Economy:
 /balance
@@ -191,28 +31,41 @@ await interaction.reply(`
 🏆 Levels:
 /rank
 /leaderboard
-/addxp
-/removexp
-/setlevelchannel
 
 🎫 Tickets:
 /ticket
 /closeticket
-/setticketchannel
 
 📨 Invites:
 /invite
-/resetinvites
 /inviteleaderboard
 
 💬 Messages:
 /messages
 /messageleaderboard
 
-🖼️ Utility:
-/avatar
-/serverinfo
+🎭 Roles:
+/reactionrole
 `);
+
+}
+
+else if (interaction.commandName === "funfact") {
+
+const facts = [
+
+"🤖 This Bot is Made by Not_Good 💻",
+"🔥 Never Give Up Until You Win 🏆",
+"⚡ This Bot is made in 2 Days 🚀",
+"😵 Making Bot is frustrating 😂",
+"📚 To Make Bot You must know Coding 👨‍💻"
+
+];
+
+const random =
+facts[Math.floor(Math.random() * facts.length)];
+
+await interaction.reply(random);
 
 }
 
@@ -260,165 +113,6 @@ quotes[Math.floor(Math.random() * quotes.length)]
 
 }
 
-else if (interaction.commandName === "serverinfo") {
-
-await interaction.reply(`
-🏠 Server: ${interaction.guild.name}
-👥 Members: ${interaction.guild.memberCount}
-`);
-
-}
-
-else if (interaction.commandName === "avatar") {
-
-const user =
-interaction.options.getUser("user") ||
-interaction.user;
-
-await interaction.reply(
-user.displayAvatarURL({ dynamic: true, size: 1024 })
-);
-
-}
-
-else if (interaction.commandName === "rps") {
-
-const userChoice =
-interaction.options.getString("choice");
-
-const choices =
-["rock", "paper", "scissors"];
-
-const botChoice =
-choices[Math.floor(Math.random() * choices.length)];
-
-await interaction.reply(
-`You chose ${userChoice}\nBot chose ${botChoice}`
-);
-
-}
-
-else if (interaction.commandName === "guess") {
-
-const number =
-interaction.options.getInteger("number");
-
-const random =
-Math.floor(Math.random() * 10) + 1;
-
-if (number === random) {
-
-await interaction.reply(
-`🎉 Correct! Number was ${random}`
-);
-
-} else {
-
-await interaction.reply(
-`❌ Wrong! Number was ${random}`
-);
-
-}
-
-}
-
-else if (interaction.commandName === "ban") {
-
-const user =
-interaction.options.getUser("user");
-
-const member =
-interaction.guild.members.cache.get(user.id);
-
-await member.ban();
-
-await interaction.reply(
-`🔨 ${user.tag} banned`
-);
-
-}
-
-else if (interaction.commandName === "kick") {
-
-const user =
-interaction.options.getUser("user");
-
-const member =
-interaction.guild.members.cache.get(user.id);
-
-await member.kick();
-
-await interaction.reply(
-`👢 ${user.tag} kicked`
-);
-
-}
-
-else if (interaction.commandName === "timeout") {
-
-const user =
-interaction.options.getUser("user");
-
-const minutes =
-interaction.options.getInteger("minutes");
-
-const member =
-interaction.guild.members.cache.get(user.id);
-
-await member.timeout(minutes * 60 * 1000);
-
-await interaction.reply(
-`⏳ ${user.tag} timed out`
-);
-
-}
-
-else if (interaction.commandName === "warn") {
-
-const user =
-interaction.options.getUser("user");
-
-const reason =
-interaction.options.getString("reason") || "No reason";
-
-if (!warnings[user.id]) {
-warnings[user.id] = [];
-}
-
-warnings[user.id].push(reason);
-
-fs.writeFileSync(
-"warnings.json",
-JSON.stringify(warnings, null, 2)
-);
-
-await interaction.reply(
-`⚠️ Warned ${user.tag}`
-);
-
-}
-
-else if (interaction.commandName === "reactionrole") {
-
-const role =
-interaction.options.getRole("role");
-
-const button =
-new ButtonBuilder()
-.setCustomId(`rr_${role.id}`)
-.setLabel(`Get ${role.name}`)
-.setStyle(ButtonStyle.Success);
-
-const row =
-new ActionRowBuilder().addComponents(button);
-
-await interaction.reply({
-content: "🎭 Click button for role",
-components: [row]
-});
-
-}
-
 else if (interaction.commandName === "balance") {
 
 const user =
@@ -453,14 +147,14 @@ JSON.stringify(economy, null, 2)
 );
 
 await interaction.reply(
-"💰 You got 500 coins"
+"💰 You received 500 coins"
 );
 
 }
 
 else if (interaction.commandName === "pay") {
 
-const user =
+const target =
 interaction.options.getUser("user");
 
 const amount =
@@ -472,14 +166,14 @@ coins: 0
 };
 }
 
-if (!economy[user.id]) {
-economy[user.id] = {
+if (!economy[target.id]) {
+economy[target.id] = {
 coins: 0
 };
 }
 
 economy[interaction.user.id].coins -= amount;
-economy[user.id].coins += amount;
+economy[target.id].coins += amount;
 
 fs.writeFileSync(
 "economy.json",
@@ -487,7 +181,7 @@ JSON.stringify(economy, null, 2)
 );
 
 await interaction.reply(
-`💸 Paid ${amount} coins`
+`💸 Sent ${amount} coins`
 );
 
 }
@@ -511,8 +205,8 @@ else if (interaction.commandName === "leaderboard") {
 
 const sorted =
 Object.entries(levels)
-.sort((a, b) => b[1].level - a[1].level)
-.slice(0, 10);
+.sort((a,b) => b[1].level - a[1].level)
+.slice(0,10);
 
 let text = "";
 
@@ -521,86 +215,12 @@ for (let i = 0; i < sorted.length; i++) {
 const user =
 await client.users.fetch(sorted[i][0]);
 
-text += `${i + 1}. ${user.username} — Level ${sorted[i][1].level}\n`;
+text += `${i+1}. ${user.username} — Level ${sorted[i][1].level}\n`;
 
 }
 
 await interaction.reply(
 `🏆 Leaderboard\n\n${text || "No data"}`
-);
-
-}
-
-}
-else if (interaction.commandName === "addxp") {
-
-const user =
-interaction.options.getUser("user");
-
-const amount =
-interaction.options.getInteger("amount");
-
-if (!levels[user.id]) {
-levels[user.id] = {
-xp: 0,
-level: 1
-};
-}
-
-levels[user.id].xp += amount;
-
-fs.writeFileSync(
-"levels.json",
-JSON.stringify(levels, null, 2)
-);
-
-await interaction.reply(`✅ Added ${amount} XP`);
-
-}
-
-else if (interaction.commandName === "removexp") {
-
-const user =
-interaction.options.getUser("user");
-
-const amount =
-interaction.options.getInteger("amount");
-
-if (!levels[user.id]) {
-levels[user.id] = {
-xp: 0,
-level: 1
-};
-}
-
-levels[user.id].xp -= amount;
-
-if (levels[user.id].xp < 0)
-levels[user.id].xp = 0;
-
-fs.writeFileSync(
-"levels.json",
-JSON.stringify(levels, null, 2)
-);
-
-await interaction.reply(`❌ Removed ${amount} XP`);
-
-}
-
-else if (interaction.commandName === "setlevelchannel") {
-
-const channel =
-interaction.options.getChannel("channel");
-
-settings.levelChannel = channel.id;
-
-fs.writeFileSync(
-"settings.json",
-JSON.stringify(settings, null, 2)
-);
-
-await interaction.reply(
-`✅ Level channel set to ${channel}`
 );
 
 }
@@ -649,24 +269,6 @@ interaction.channel.delete();
 
 }
 
-else if (interaction.commandName === "setticketchannel") {
-
-const channel =
-interaction.options.getChannel("channel");
-
-settings.ticketCategory = channel.id;
-
-fs.writeFileSync(
-"settings.json",
-JSON.stringify(settings, null, 2)
-);
-
-await interaction.reply(
-`✅ Ticket category set`
-);
-
-}
-
 else if (interaction.commandName === "invite") {
 
 const user =
@@ -679,24 +281,6 @@ invites[user.id] = 0;
 
 await interaction.reply(
 `📨 ${user.username} has ${invites[user.id]} invites`
-);
-
-}
-
-else if (interaction.commandName === "resetinvites") {
-
-const user =
-interaction.options.getUser("user");
-
-invites[user.id] = 0;
-
-fs.writeFileSync(
-"invites.json",
-JSON.stringify(invites, null, 2)
-);
-
-await interaction.reply(
-`♻️ Reset invites for ${user.username}`
 );
 
 }
@@ -764,6 +348,31 @@ await interaction.reply(
 );
 
 }
+
+else if (interaction.commandName === "reactionrole") {
+
+const role =
+interaction.options.getRole("role");
+
+const button =
+new ButtonBuilder()
+.setCustomId(`rr_${role.id}`)
+.setLabel(`Get ${role.name}`)
+.setStyle(ButtonStyle.Success);
+
+const row =
+new ActionRowBuilder()
+.addComponents(button);
+
+await interaction.reply({
+content: "🎭 Click button for role",
+components: [row]
+});
+
+}
+
+}
+
 else if (interaction.isButton()) {
 
 if (interaction.customId.startsWith("rr_")) {
@@ -804,8 +413,8 @@ console.error(err);
 
 if (!interaction.replied) {
 
-interaction.reply({
-content: "❌ Error",
+await interaction.reply({
+content: "❌ Error occurred",
 ephemeral: true
 });
 
@@ -814,5 +423,3 @@ ephemeral: true
 }
 
 });
-
-client.login(process.env.TOKEN);
