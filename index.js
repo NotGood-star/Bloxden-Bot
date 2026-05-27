@@ -532,7 +532,238 @@ await interaction.reply(
 }
 
 }
+else if (interaction.commandName === "addxp") {
 
+const user =
+interaction.options.getUser("user");
+
+const amount =
+interaction.options.getInteger("amount");
+
+if (!levels[user.id]) {
+levels[user.id] = {
+xp: 0,
+level: 1
+};
+}
+
+levels[user.id].xp += amount;
+
+fs.writeFileSync(
+"levels.json",
+JSON.stringify(levels, null, 2)
+);
+
+await interaction.reply(`✅ Added ${amount} XP`);
+
+}
+
+else if (interaction.commandName === "removexp") {
+
+const user =
+interaction.options.getUser("user");
+
+const amount =
+interaction.options.getInteger("amount");
+
+if (!levels[user.id]) {
+levels[user.id] = {
+xp: 0,
+level: 1
+};
+}
+
+levels[user.id].xp -= amount;
+
+if (levels[user.id].xp < 0)
+levels[user.id].xp = 0;
+
+fs.writeFileSync(
+"levels.json",
+JSON.stringify(levels, null, 2)
+);
+
+await interaction.reply(`❌ Removed ${amount} XP`);
+
+}
+
+else if (interaction.commandName === "setlevelchannel") {
+
+const channel =
+interaction.options.getChannel("channel");
+
+settings.levelChannel = channel.id;
+
+fs.writeFileSync(
+"settings.json",
+JSON.stringify(settings, null, 2)
+);
+
+await interaction.reply(
+`✅ Level channel set to ${channel}`
+);
+
+}
+
+else if (interaction.commandName === "ticket") {
+
+const ticket =
+await interaction.guild.channels.create({
+name: `ticket-${interaction.user.username}`,
+type: ChannelType.GuildText
+});
+
+await ticket.permissionOverwrites.create(
+interaction.guild.roles.everyone,
+{
+ViewChannel: false
+}
+);
+
+await ticket.permissionOverwrites.create(
+interaction.user.id,
+{
+ViewChannel: true,
+SendMessages: true
+}
+);
+
+await ticket.send(
+`🎫 Welcome ${interaction.user}`
+);
+
+await interaction.reply({
+content: `✅ Ticket created: ${ticket}`,
+ephemeral: true
+});
+
+}
+
+else if (interaction.commandName === "closeticket") {
+
+await interaction.reply("🔒 Closing ticket...");
+
+setTimeout(() => {
+interaction.channel.delete();
+}, 3000);
+
+}
+
+else if (interaction.commandName === "setticketchannel") {
+
+const channel =
+interaction.options.getChannel("channel");
+
+settings.ticketCategory = channel.id;
+
+fs.writeFileSync(
+"settings.json",
+JSON.stringify(settings, null, 2)
+);
+
+await interaction.reply(
+`✅ Ticket category set`
+);
+
+}
+
+else if (interaction.commandName === "invite") {
+
+const user =
+interaction.options.getUser("user") ||
+interaction.user;
+
+if (!invites[user.id]) {
+invites[user.id] = 0;
+}
+
+await interaction.reply(
+`📨 ${user.username} has ${invites[user.id]} invites`
+);
+
+}
+
+else if (interaction.commandName === "resetinvites") {
+
+const user =
+interaction.options.getUser("user");
+
+invites[user.id] = 0;
+
+fs.writeFileSync(
+"invites.json",
+JSON.stringify(invites, null, 2)
+);
+
+await interaction.reply(
+`♻️ Reset invites for ${user.username}`
+);
+
+}
+
+else if (interaction.commandName === "inviteleaderboard") {
+
+const sorted =
+Object.entries(invites)
+.sort((a,b) => b[1] - a[1])
+.slice(0,10);
+
+let text = "";
+
+for (let i = 0; i < sorted.length; i++) {
+
+const user =
+await client.users.fetch(sorted[i][0]);
+
+text += `${i+1}. ${user.username} — ${sorted[i][1]} invites\n`;
+
+}
+
+await interaction.reply(
+`🏆 Invite Leaderboard\n\n${text || "No data"}`
+);
+
+}
+
+else if (interaction.commandName === "messages") {
+
+const user =
+interaction.options.getUser("user") ||
+interaction.user;
+
+if (!messages[user.id]) {
+messages[user.id] = 0;
+}
+
+await interaction.reply(
+`💬 ${user.username} has ${messages[user.id]} messages`
+);
+
+}
+
+else if (interaction.commandName === "messageleaderboard") {
+
+const sorted =
+Object.entries(messages)
+.sort((a,b) => b[1] - a[1])
+.slice(0,10);
+
+let text = "";
+
+for (let i = 0; i < sorted.length; i++) {
+
+const user =
+await client.users.fetch(sorted[i][0]);
+
+text += `${i+1}. ${user.username} — ${sorted[i][1]} messages\n`;
+
+}
+
+await interaction.reply(
+`🏆 Message Leaderboard\n\n${text || "No data"}`
+);
+
+}
 else if (interaction.isButton()) {
 
 if (interaction.customId.startsWith("rr_")) {
