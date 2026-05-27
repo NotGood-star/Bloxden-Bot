@@ -654,4 +654,7 @@ ephemeral: true
 
 });
 
+require("./events/welcome")(client);
+require("./events/giveaway")(client);
+
 client.login(process.env.TOKEN);
