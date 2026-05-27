@@ -1,3 +1,125 @@
+require("dotenv").config();
+
+const fs = require("fs");
+const express = require("express");
+
+const {
+Client,
+GatewayIntentBits,
+PermissionsBitField,
+ChannelType,
+ActionRowBuilder,
+ButtonBuilder,
+ButtonStyle
+} = require("discord.js");
+
+const app = express();
+
+const client = new Client({
+intents: [
+GatewayIntentBits.Guilds,
+GatewayIntentBits.GuildMessages,
+GatewayIntentBits.GuildMembers,
+GatewayIntentBits.MessageContent
+]
+});
+
+app.get("/", (req, res) => {
+res.send("Bot Running");
+});
+
+app.listen(3000, () => {
+console.log("Web server running on port 3000");
+});
+
+let economy = {};
+let levels = {};
+let invites = {};
+let messages = {};
+
+if (fs.existsSync("economy.json")) {
+economy = JSON.parse(fs.readFileSync("economy.json"));
+}
+
+if (fs.existsSync("levels.json")) {
+levels = JSON.parse(fs.readFileSync("levels.json"));
+}
+
+if (fs.existsSync("invites.json")) {
+invites = JSON.parse(fs.readFileSync("invites.json"));
+}
+
+if (fs.existsSync("messages.json")) {
+messages = JSON.parse(fs.readFileSync("messages.json"));
+}
+
+client.once("clientReady", () => {
+console.log(`${client.user.tag} is Online!`);
+});
+
+client.on("messageCreate", async message => {
+
+if (message.author.bot) return;
+
+if (!messages[message.author.id]) {
+messages[message.author.id] = 0;
+}
+
+messages[message.author.id]++;
+
+fs.writeFileSync(
+"messages.json",
+JSON.stringify(messages, null, 2)
+);
+
+if (!levels[message.author.id]) {
+levels[message.author.id] = {
+xp: 0,
+level: 1
+};
+}
+
+levels[message.author.id].xp += 10;
+
+const neededXP =
+levels[message.author.id].level * 100;
+
+if (levels[message.author.id].xp >= neededXP) {
+
+levels[message.author.id].xp = 0;
+levels[message.author.id].level++;
+
+message.channel.send(
+`🎉 ${message.author} leveled up to Level ${levels[message.author.id].level}`
+);
+
+}
+
+fs.writeFileSync(
+"levels.json",
+JSON.stringify(levels, null, 2)
+);
+
+});
+
+client.on("guildMemberAdd", member => {
+
+const inviter =
+member.guild.members.cache.random();
+
+if (!invites[inviter.id]) {
+invites[inviter.id] = 0;
+}
+
+invites[inviter.id]++;
+
+fs.writeFileSync(
+"invites.json",
+JSON.stringify(invites, null, 2)
+);
+
+});
+
 client.on("interactionCreate", async interaction => {
 
 try {
@@ -423,3 +545,5 @@ ephemeral: true
 }
 
 });
+
+client.login(process.env.TOKEN);
