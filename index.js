@@ -81,10 +81,7 @@ level: 1
 
 levels[message.author.id].xp += 10;
 
-const neededXP =
-levels[message.author.id].level * 100;
-
-if (levels[message.author.id].xp >= neededXP) {
+if (levels[message.author.id].xp >= 100) {
 
 levels[message.author.id].xp = 0;
 levels[message.author.id].level++;
@@ -98,24 +95,6 @@ message.channel.send(
 fs.writeFileSync(
 "levels.json",
 JSON.stringify(levels, null, 2)
-);
-
-});
-
-client.on("guildMemberAdd", member => {
-
-const inviter =
-member.guild.members.cache.random();
-
-if (!invites[inviter.id]) {
-invites[inviter.id] = 0;
-}
-
-invites[inviter.id]++;
-
-fs.writeFileSync(
-"invites.json",
-JSON.stringify(invites, null, 2)
 );
 
 });
@@ -168,6 +147,18 @@ await interaction.reply(`
 
 🎭 Roles:
 /reactionrole
+
+🛡️ Moderation:
+/ban
+/kick
+/timeout
+/clear
+/warn
+
+🎉 Giveaway:
+/giveaway
+/reroll
+/endgiveaway
 `);
 
 }
@@ -175,19 +166,16 @@ await interaction.reply(`
 else if (interaction.commandName === "funfact") {
 
 const facts = [
-
 "🤖 This Bot is Made by Not_Good 💻",
 "🔥 Never Give Up Until You Win 🏆",
 "⚡ This Bot is made in 2 Days 🚀",
 "😵 Making Bot is frustrating 😂",
 "📚 To Make Bot You must know Coding 👨‍💻"
-
 ];
 
-const random =
-facts[Math.floor(Math.random() * facts.length)];
-
-await interaction.reply(random);
+await interaction.reply(
+facts[Math.floor(Math.random() * facts.length)]
+);
 
 }
 
@@ -242,9 +230,7 @@ interaction.options.getUser("user") ||
 interaction.user;
 
 if (!economy[user.id]) {
-economy[user.id] = {
-coins: 0
-};
+economy[user.id] = { coins: 0 };
 }
 
 await interaction.reply(
@@ -256,9 +242,7 @@ await interaction.reply(
 else if (interaction.commandName === "daily") {
 
 if (!economy[interaction.user.id]) {
-economy[interaction.user.id] = {
-coins: 0
-};
+economy[interaction.user.id] = { coins: 0 };
 }
 
 economy[interaction.user.id].coins += 500;
@@ -283,15 +267,11 @@ const amount =
 interaction.options.getInteger("amount");
 
 if (!economy[interaction.user.id]) {
-economy[interaction.user.id] = {
-coins: 0
-};
+economy[interaction.user.id] = { coins: 0 };
 }
 
 if (!economy[target.id]) {
-economy[target.id] = {
-coins: 0
-};
+economy[target.id] = { coins: 0 };
 }
 
 economy[interaction.user.id].coins -= amount;
@@ -490,6 +470,134 @@ await interaction.reply({
 content: "🎭 Click button for role",
 components: [row]
 });
+
+}
+
+else if (interaction.commandName === "ban") {
+
+const user =
+interaction.options.getUser("user");
+
+const member =
+interaction.guild.members.cache.get(user.id);
+
+await member.ban();
+
+await interaction.reply(
+`🔨 Banned ${user.username}`
+);
+
+}
+
+else if (interaction.commandName === "kick") {
+
+const user =
+interaction.options.getUser("user");
+
+const member =
+interaction.guild.members.cache.get(user.id);
+
+await member.kick();
+
+await interaction.reply(
+`👢 Kicked ${user.username}`
+);
+
+}
+
+else if (interaction.commandName === "timeout") {
+
+const user =
+interaction.options.getUser("user");
+
+const member =
+interaction.guild.members.cache.get(user.id);
+
+const minutes =
+interaction.options.getInteger("minutes");
+
+await member.timeout(minutes * 60 * 1000);
+
+await interaction.reply(
+`⏳ Timed out ${user.username}`
+);
+
+}
+
+else if (interaction.commandName === "clear") {
+
+const amount =
+interaction.options.getInteger("amount");
+
+await interaction.channel.bulkDelete(amount);
+
+await interaction.reply({
+content: `🧹 Deleted ${amount} messages`,
+ephemeral: true
+});
+
+}
+
+else if (interaction.commandName === "warn") {
+
+const user =
+interaction.options.getUser("user");
+
+const reason =
+interaction.options.getString("reason") || "No reason";
+
+await interaction.reply(
+`⚠️ Warned ${user.username}\nReason: ${reason}`
+);
+
+}
+
+else if (interaction.commandName === "giveaway") {
+
+const prize =
+interaction.options.getString("prize");
+
+const duration =
+interaction.options.getInteger("duration");
+
+const winners =
+interaction.options.getInteger("winners");
+
+const button =
+new ButtonBuilder()
+.setCustomId("giveaway_join")
+.setLabel("🎉 Join Giveaway")
+.setStyle(ButtonStyle.Primary);
+
+const row =
+new ActionRowBuilder()
+.addComponents(button);
+
+await interaction.reply({
+content:
+`🎉 GIVEAWAY 🎉
+
+🏆 Prize: ${prize}
+👑 Winners: ${winners}
+⏰ Duration: ${duration} seconds`,
+components: [row]
+});
+
+}
+
+else if (interaction.commandName === "reroll") {
+
+await interaction.reply(
+"🎉 Giveaway rerolled!"
+);
+
+}
+
+else if (interaction.commandName === "endgiveaway") {
+
+await interaction.reply(
+"⏹️ Giveaway ended!"
+);
 
 }
 
