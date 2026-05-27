@@ -1,4 +1,4 @@
-  require("dotenv").config();
+require("dotenv").config();
 
 const {
 REST,
@@ -175,12 +175,12 @@ option.setName("prize")
 )
 .addIntegerOption(option =>
 option.setName("duration")
-.setDescription("Duration")
+.setDescription("Duration in seconds")
 .setRequired(true)
 )
 .addIntegerOption(option =>
 option.setName("winners")
-.setDescription("Winners")
+.setDescription("Number of winners")
 .setRequired(true)
 ),
 
