@@ -1,8 +1,3 @@
-const { REST, Routes, SlashCommandBuilder } = require("discord.js");
-
-const TOKEN = process.env.TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
-
 const commands = [
 
 new SlashCommandBuilder()
@@ -32,6 +27,14 @@ new SlashCommandBuilder()
 new SlashCommandBuilder()
 .setName("serverinfo")
 .setDescription("Server info"),
+
+new SlashCommandBuilder()
+.setName("avatar")
+.setDescription("Show avatar")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+),
 
 new SlashCommandBuilder()
 .setName("rps")
@@ -227,14 +230,6 @@ option.setName("channel")
 ),
 
 new SlashCommandBuilder()
-.setName("avatar")
-.setDescription("Show avatar")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-),
-
-new SlashCommandBuilder()
 .setName("invite")
 .setDescription("Show invites")
 .addUserOption(option =>
@@ -268,28 +263,3 @@ new SlashCommandBuilder()
 .setDescription("Message leaderboard")
 
 ].map(cmd => cmd.toJSON());
-
-const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-(async () => {
-
-try {
-
-console.log("Registering slash commands...");
-
-await rest.put(
-Routes.applicationCommands(CLIENT_ID),
-{ body: commands }
-);
-
-console.log("Slash commands registered!");
-
-process.exit(0);
-
-} catch (err) {
-
-console.error(err);
-
-}
-
-})(); 
