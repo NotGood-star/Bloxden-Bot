@@ -24,6 +24,8 @@ GatewayIntentBits.MessageContent
 ]
 });
 
+/* WEB SERVER */
+
 app.get("/", (req, res) => {
 res.send("Bot Running");
 });
@@ -31,6 +33,8 @@ res.send("Bot Running");
 app.listen(3000, () => {
 console.log("Web server running on port 3000");
 });
+
+/* DATABASES */
 
 let economy = {};
 let levels = {};
@@ -53,18 +57,19 @@ if (fs.existsSync("messages.json")) {
 messages = JSON.parse(fs.readFileSync("messages.json"));
 }
 
+/* READY */
+
 client.once("clientReady", () => {
 console.log(`${client.user.tag} is Online!`);
 });
+
+/* LEVEL + MESSAGE SYSTEM */
 
 client.on("messageCreate", async message => {
 
 if (message.author.bot) return;
 
-if (!messages[message.author.id]) {
-messages[message.author.id] = 0;
-}
-
+messages[message.author.id] ||= 0;
 messages[message.author.id]++;
 
 fs.writeFileSync(
@@ -72,12 +77,10 @@ fs.writeFileSync(
 JSON.stringify(messages, null, 2)
 );
 
-if (!levels[message.author.id]) {
-levels[message.author.id] = {
+levels[message.author.id] ||= {
 xp: 0,
 level: 1
 };
-}
 
 levels[message.author.id].xp += 10;
 
@@ -99,17 +102,23 @@ JSON.stringify(levels, null, 2)
 
 });
 
+/* INTERACTIONS */
+
 client.on("interactionCreate", async interaction => {
 
 try {
 
 if (interaction.isChatInputCommand()) {
 
+/* PING */
+
 if (interaction.commandName === "ping") {
 
 await interaction.reply("🏓 Pong!");
 
 }
+
+/* HELP */
 
 else if (interaction.commandName === "help") {
 
@@ -128,6 +137,8 @@ await interaction.reply(`
 /balance
 /daily
 /pay
+/shop
+/buy
 
 🏆 Levels:
 /rank
@@ -163,6 +174,8 @@ await interaction.reply(`
 
 }
 
+/* FUN FACT */
+
 else if (interaction.commandName === "funfact") {
 
 const facts = [
@@ -170,7 +183,8 @@ const facts = [
 "🔥 Never Give Up Until You Win 🏆",
 "⚡ This Bot is made in 2 Days 🚀",
 "😵 Making Bot is frustrating 😂",
-"📚 To Make Bot You must know Coding 👨‍💻"
+"📚 To Make Bot You must know Coding 👨‍💻",
+"👑 Our Helping Team Has 3 Members!\n\n👑 Owner — Not_Good\n⚡ Co-Owner — Vornycs\n🌟 Co-Owner — Zerphy"
 ];
 
 await interaction.reply(
@@ -179,12 +193,14 @@ facts[Math.floor(Math.random() * facts.length)]
 
 }
 
+/* JOKE */
+
 else if (interaction.commandName === "joke") {
 
 const jokes = [
 "😂 Discord mods never sleep.",
 "🤣 Roblox lag again.",
-"😂 Chicken crossed the road."
+"💸 Vornycs is richest person in Earth 🌍👑"
 ];
 
 await interaction.reply(
@@ -192,6 +208,8 @@ jokes[Math.floor(Math.random() * jokes.length)]
 );
 
 }
+
+/* DICE */
 
 else if (interaction.commandName === "dice") {
 
@@ -201,6 +219,8 @@ await interaction.reply(
 
 }
 
+/* COINFLIP */
+
 else if (interaction.commandName === "coinflip") {
 
 await interaction.reply(
@@ -208,6 +228,8 @@ await interaction.reply(
 );
 
 }
+
+/* QUOTE */
 
 else if (interaction.commandName === "quote") {
 
@@ -223,29 +245,55 @@ quotes[Math.floor(Math.random() * quotes.length)]
 
 }
 
+/* BALANCE */
+
 else if (interaction.commandName === "balance") {
 
 const user =
 interaction.options.getUser("user") ||
 interaction.user;
 
-if (!economy[user.id]) {
-economy[user.id] = { coins: 0 };
-}
+economy[user.id] ||= {
+coins: 0,
+lastDaily: 0,
+inventory: []
+};
 
 await interaction.reply(
-`💰 ${user.username} has ${economy[user.id].coins} coins`
+`💰 ${user.username} has ${economy[user.id].coins} coins 🪙`
 );
 
 }
 
+/* DAILY */
+
 else if (interaction.commandName === "daily") {
 
-if (!economy[interaction.user.id]) {
-economy[interaction.user.id] = { coins: 0 };
+economy[interaction.user.id] ||= {
+coins: 0,
+lastDaily: 0,
+inventory: []
+};
+
+const now = Date.now();
+
+const cooldown = 24 * 60 * 60 * 1000;
+
+if (
+now - economy[interaction.user.id].lastDaily
+< cooldown
+) {
+
+return interaction.reply({
+content: "⏰ You already claimed daily today!",
+ephemeral: true
+});
+
 }
 
 economy[interaction.user.id].coins += 500;
+
+economy[interaction.user.id].lastDaily = now;
 
 fs.writeFileSync(
 "economy.json",
@@ -253,10 +301,12 @@ JSON.stringify(economy, null, 2)
 );
 
 await interaction.reply(
-"💰 You received 500 coins"
+"💰 You claimed 500 coins!"
 );
 
 }
+
+/* PAY */
 
 else if (interaction.commandName === "pay") {
 
@@ -266,12 +316,27 @@ interaction.options.getUser("user");
 const amount =
 interaction.options.getInteger("amount");
 
-if (!economy[interaction.user.id]) {
-economy[interaction.user.id] = { coins: 0 };
-}
+economy[interaction.user.id] ||= {
+coins: 0,
+lastDaily: 0,
+inventory: []
+};
 
-if (!economy[target.id]) {
-economy[target.id] = { coins: 0 };
+economy[target.id] ||= {
+coins: 0,
+lastDaily: 0,
+inventory: []
+};
+
+if (
+economy[interaction.user.id].coins
+< amount
+) {
+
+return interaction.reply(
+"❌ Not enough coins"
+);
+
 }
 
 economy[interaction.user.id].coins -= amount;
@@ -283,25 +348,98 @@ JSON.stringify(economy, null, 2)
 );
 
 await interaction.reply(
-`💸 Sent ${amount} coins`
+`💸 Sent ${amount} coins to ${target.username}`
 );
 
 }
 
+/* SHOP */
+
+else if (interaction.commandName === "shop") {
+
+await interaction.reply(`
+🛒 BloxDen Shop
+
+🟤 Merchant Role — 10,000 Coins 🪙
+👑 King Role — 25,000 Coins 🪙
+💎 VIP Role — 50,000 Coins 🪙
+🚀 Booster Role — 75,000 Coins 🪙
+🔥 Legend Role — 100,000 Coins 🪙
+`);
+
+}
+
+/* BUY */
+
+else if (interaction.commandName === "buy") {
+
+const item =
+interaction.options.getString("item");
+
+economy[interaction.user.id] ||= {
+coins: 0,
+lastDaily: 0,
+inventory: []
+};
+
+const prices = {
+merchant: 10000,
+king: 25000,
+vip: 50000,
+booster: 75000,
+legend: 100000
+};
+
+if (!prices[item]) {
+
+return interaction.reply(
+"❌ Item not found"
+);
+
+}
+
+if (
+economy[interaction.user.id].coins
+< prices[item]
+) {
+
+return interaction.reply(
+"💸 You don't have enough coins!"
+);
+
+}
+
+economy[interaction.user.id].coins -= prices[item];
+
+economy[interaction.user.id].inventory.push(item);
+
+fs.writeFileSync(
+"economy.json",
+JSON.stringify(economy, null, 2)
+);
+
+await interaction.reply(
+`✅ You bought ${item} for ${prices[item]} coins 🪙`
+);
+
+}
+
+/* RANK */
+
 else if (interaction.commandName === "rank") {
 
-if (!levels[interaction.user.id]) {
-levels[interaction.user.id] = {
+levels[interaction.user.id] ||= {
 xp: 0,
 level: 1
 };
-}
 
 await interaction.reply(
 `🏆 Level ${levels[interaction.user.id].level}\n⭐ XP ${levels[interaction.user.id].xp}`
 );
 
 }
+
+/* LEADERBOARD */
 
 else if (interaction.commandName === "leaderboard") {
 
@@ -326,6 +464,8 @@ await interaction.reply(
 );
 
 }
+
+/* TICKET */
 
 else if (interaction.commandName === "ticket") {
 
@@ -361,9 +501,13 @@ ephemeral: true
 
 }
 
+/* CLOSE TICKET */
+
 else if (interaction.commandName === "closeticket") {
 
-await interaction.reply("🔒 Closing ticket...");
+await interaction.reply(
+"🔒 Closing ticket..."
+);
 
 setTimeout(() => {
 interaction.channel.delete();
@@ -371,85 +515,7 @@ interaction.channel.delete();
 
 }
 
-else if (interaction.commandName === "invite") {
-
-const user =
-interaction.options.getUser("user") ||
-interaction.user;
-
-if (!invites[user.id]) {
-invites[user.id] = 0;
-}
-
-await interaction.reply(
-`📨 ${user.username} has ${invites[user.id]} invites`
-);
-
-}
-
-else if (interaction.commandName === "inviteleaderboard") {
-
-const sorted =
-Object.entries(invites)
-.sort((a,b) => b[1] - a[1])
-.slice(0,10);
-
-let text = "";
-
-for (let i = 0; i < sorted.length; i++) {
-
-const user =
-await client.users.fetch(sorted[i][0]);
-
-text += `${i+1}. ${user.username} — ${sorted[i][1]} invites\n`;
-
-}
-
-await interaction.reply(
-`🏆 Invite Leaderboard\n\n${text || "No data"}`
-);
-
-}
-
-else if (interaction.commandName === "messages") {
-
-const user =
-interaction.options.getUser("user") ||
-interaction.user;
-
-if (!messages[user.id]) {
-messages[user.id] = 0;
-}
-
-await interaction.reply(
-`💬 ${user.username} has ${messages[user.id]} messages`
-);
-
-}
-
-else if (interaction.commandName === "messageleaderboard") {
-
-const sorted =
-Object.entries(messages)
-.sort((a,b) => b[1] - a[1])
-.slice(0,10);
-
-let text = "";
-
-for (let i = 0; i < sorted.length; i++) {
-
-const user =
-await client.users.fetch(sorted[i][0]);
-
-text += `${i+1}. ${user.username} — ${sorted[i][1]} messages\n`;
-
-}
-
-await interaction.reply(
-`🏆 Message Leaderboard\n\n${text || "No data"}`
-);
-
-}
+/* REACTION ROLE */
 
 else if (interaction.commandName === "reactionrole") {
 
@@ -472,6 +538,8 @@ components: [row]
 });
 
 }
+
+/* MODERATION */
 
 else if (interaction.commandName === "ban") {
 
@@ -505,25 +573,6 @@ await interaction.reply(
 
 }
 
-else if (interaction.commandName === "timeout") {
-
-const user =
-interaction.options.getUser("user");
-
-const member =
-interaction.guild.members.cache.get(user.id);
-
-const minutes =
-interaction.options.getInteger("minutes");
-
-await member.timeout(minutes * 60 * 1000);
-
-await interaction.reply(
-`⏳ Timed out ${user.username}`
-);
-
-}
-
 else if (interaction.commandName === "clear") {
 
 const amount =
@@ -538,70 +587,9 @@ ephemeral: true
 
 }
 
-else if (interaction.commandName === "warn") {
-
-const user =
-interaction.options.getUser("user");
-
-const reason =
-interaction.options.getString("reason") || "No reason";
-
-await interaction.reply(
-`⚠️ Warned ${user.username}\nReason: ${reason}`
-);
-
 }
 
-else if (interaction.commandName === "giveaway") {
-
-const prize =
-interaction.options.getString("prize");
-
-const duration =
-interaction.options.getInteger("duration");
-
-const winners =
-interaction.options.getInteger("winners");
-
-const button =
-new ButtonBuilder()
-.setCustomId("giveaway_join")
-.setLabel("🎉 Join Giveaway")
-.setStyle(ButtonStyle.Primary);
-
-const row =
-new ActionRowBuilder()
-.addComponents(button);
-
-await interaction.reply({
-content:
-`🎉 GIVEAWAY 🎉
-
-🏆 Prize: ${prize}
-👑 Winners: ${winners}
-⏰ Duration: ${duration} seconds`,
-components: [row]
-});
-
-}
-
-else if (interaction.commandName === "reroll") {
-
-await interaction.reply(
-"🎉 Giveaway rerolled!"
-);
-
-}
-
-else if (interaction.commandName === "endgiveaway") {
-
-await interaction.reply(
-"⏹️ Giveaway ended!"
-);
-
-}
-
-}
+/* BUTTONS */
 
 else if (interaction.isButton()) {
 
@@ -613,7 +601,9 @@ interaction.customId.replace("rr_", "");
 const role =
 interaction.guild.roles.cache.get(roleId);
 
-if (interaction.member.roles.cache.has(role.id)) {
+if (
+interaction.member.roles.cache.has(role.id)
+) {
 
 await interaction.member.roles.remove(role);
 
@@ -654,7 +644,11 @@ ephemeral: true
 
 });
 
+/* EVENTS */
+
 require("./events/welcome")(client);
 require("./events/giveaway")(client);
+
+/* LOGIN */
 
 client.login(process.env.TOKEN);
