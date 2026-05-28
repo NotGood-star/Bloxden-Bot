@@ -8,6 +8,8 @@ SlashCommandBuilder
 
 const commands = [
 
+/* FUN */
+
 new SlashCommandBuilder()
 .setName("ping")
 .setDescription("Ping command"),
@@ -36,6 +38,8 @@ new SlashCommandBuilder()
 .setName("quote")
 .setDescription("Shows quote"),
 
+/* ECONOMY */
+
 new SlashCommandBuilder()
 .setName("balance")
 .setDescription("Check balance")
@@ -46,7 +50,7 @@ option.setName("user")
 
 new SlashCommandBuilder()
 .setName("daily")
-.setDescription("Claim daily coins"),
+.setDescription("Claim daily reward"),
 
 new SlashCommandBuilder()
 .setName("pay")
@@ -63,12 +67,29 @@ option.setName("amount")
 ),
 
 new SlashCommandBuilder()
+.setName("shop")
+.setDescription("Open shop"),
+
+new SlashCommandBuilder()
+.setName("buy")
+.setDescription("Buy item")
+.addStringOption(option =>
+option.setName("item")
+.setDescription("Item name")
+.setRequired(true)
+),
+
+/* LEVELS */
+
+new SlashCommandBuilder()
 .setName("rank")
 .setDescription("Check rank"),
 
 new SlashCommandBuilder()
 .setName("leaderboard")
 .setDescription("Level leaderboard"),
+
+/* TICKETS */
 
 new SlashCommandBuilder()
 .setName("ticket")
@@ -77,6 +98,8 @@ new SlashCommandBuilder()
 new SlashCommandBuilder()
 .setName("closeticket")
 .setDescription("Close ticket"),
+
+/* INVITES */
 
 new SlashCommandBuilder()
 .setName("invite")
@@ -90,6 +113,8 @@ new SlashCommandBuilder()
 .setName("inviteleaderboard")
 .setDescription("Invite leaderboard"),
 
+/* MESSAGES */
+
 new SlashCommandBuilder()
 .setName("messages")
 .setDescription("Check messages")
@@ -102,6 +127,8 @@ new SlashCommandBuilder()
 .setName("messageleaderboard")
 .setDescription("Message leaderboard"),
 
+/* REACTION ROLE */
+
 new SlashCommandBuilder()
 .setName("reactionrole")
 .setDescription("Create reaction role")
@@ -110,6 +137,8 @@ option.setName("role")
 .setDescription("Role")
 .setRequired(true)
 ),
+
+/* MODERATION */
 
 new SlashCommandBuilder()
 .setName("ban")
@@ -164,6 +193,8 @@ option.setName("user")
 option.setName("reason")
 .setDescription("Reason")
 ),
+
+/* GIVEAWAY */
 
 new SlashCommandBuilder()
 .setName("giveaway")
