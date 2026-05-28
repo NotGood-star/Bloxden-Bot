@@ -79,7 +79,29 @@ option.setName("item")
 .setRequired(true)
 ),
 
-/* LEVELS */
+new SlashCommandBuilder()
+.setName("work")
+.setDescription("Work for coins"),
+
+new SlashCommandBuilder()
+.setName("gamble")
+.setDescription("Gamble coins")
+.addIntegerOption(option =>
+option.setName("amount")
+.setDescription("Amount")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("rob")
+.setDescription("Rob user")
+.addUserOption(option =>
+option.setName("user")
+.setDescription("User")
+.setRequired(true)
+),
+
+/* LEVEL SYSTEM */
 
 new SlashCommandBuilder()
 .setName("rank")
@@ -89,11 +111,24 @@ new SlashCommandBuilder()
 .setName("leaderboard")
 .setDescription("Level leaderboard"),
 
+new SlashCommandBuilder()
+.setName("setlevelchannel")
+.setDescription("Set level announcement channel")
+.addChannelOption(option =>
+option.setName("channel")
+.setDescription("Channel")
+.setRequired(true)
+),
+
 /* TICKETS */
 
 new SlashCommandBuilder()
 .setName("ticket")
 .setDescription("Create ticket"),
+
+new SlashCommandBuilder()
+.setName("ticketpanel")
+.setDescription("Create ticket panel"),
 
 new SlashCommandBuilder()
 .setName("closeticket")
