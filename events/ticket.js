@@ -1,9 +1,8 @@
 const {
-ChannelType,
 ActionRowBuilder,
 ButtonBuilder,
 ButtonStyle,
-EmbedBuilder,
+ChannelType,
 PermissionsBitField
 } = require("discord.js");
 
@@ -11,32 +10,33 @@ module.exports = (client) => {
 
 client.on("interactionCreate", async interaction => {
 
-if (
-!interaction.isChatInputCommand() &&
-!interaction.isButton()
-) return;
-
 try {
 
 /* ========================= */
-/* TICKET PANEL COMMAND */
+/* SLASH COMMANDS */
 /* ========================= */
 
+if (interaction.isChatInputCommand()) {
+
+/* ========================= */
+/* TICKET PANEL */
+/* ========================= */
+
+if (interaction.commandName === "ticketpanel") {
+
 if (
-interaction.isChatInputCommand() &&
-interaction.commandName === "ticketpanel"
+!interaction.member.permissions.has(
+PermissionsBitField.Flags.Administrator
+)
 ) {
 
-const embed =
-new EmbedBuilder()
-.setColor("Blue")
-.setTitle("🎫 BloxDen Support Panel")
-.setDescription(
-"Need help?\n\nClick the button below to create a support ticket."
-)
-.setFooter({
-text: "BloxDen Ticket System"
+return interaction.reply({
+content:
+"❌ You need Administrator permission",
+ephemeral: true
 });
+
+}
 
 const button =
 new ButtonBuilder()
@@ -49,30 +49,73 @@ new ActionRowBuilder()
 .addComponents(button);
 
 return interaction.reply({
-embeds: [embed],
+content:
+"🎫 BloxDen Support Panel\n\nClick the button below to create a support ticket.",
 components: [row]
 });
 
 }
 
 /* ========================= */
+/* CLOSE TICKET */
+/* ========================= */
+
+if (interaction.commandName === "closeticket") {
+
+if (
+!interaction.channel.name.startsWith(
+"ticket-"
+)
+) {
+
+return interaction.reply({
+content:
+"❌ This is not a ticket channel",
+ephemeral: true
+});
+
+}
+
+await interaction.reply(
+"🔒 Closing ticket in 5 seconds..."
+);
+
+setTimeout(() => {
+
+interaction.channel.delete();
+
+}, 5000);
+
+}
+
+}
+
+/* ========================= */
+/* BUTTONS */
+/* ========================= */
+
+if (interaction.isButton()) {
+
+/* ========================= */
 /* CREATE TICKET */
 /* ========================= */
 
 if (
-interaction.isButton() &&
 interaction.customId === "create_ticket"
 ) {
 
 const existing =
 interaction.guild.channels.cache.find(
-c => c.name === `ticket-${interaction.user.id}`
+c =>
+c.name ===
+`ticket-${interaction.user.id}`
 );
 
 if (existing) {
 
 return interaction.reply({
-content: "❌ You already have an open ticket!",
+content:
+`❌ You already have a ticket: ${existing}`,
 ephemeral: true
 });
 
@@ -82,22 +125,25 @@ const ticket =
 await interaction.guild.channels.create({
 name: `ticket-${interaction.user.id}`,
 type: ChannelType.GuildText,
+
 permissionOverwrites: [
+
 {
-id: interaction.guild.roles.everyone,
-deny: [
-PermissionsBitField.Flags.ViewChannel
-]
+id: interaction.guild.id,
+deny: ["ViewChannel"]
 },
+
 {
 id: interaction.user.id,
 allow: [
-PermissionsBitField.Flags.ViewChannel,
-PermissionsBitField.Flags.SendMessages,
-PermissionsBitField.Flags.ReadMessageHistory
+"ViewChannel",
+"SendMessages",
+"ReadMessageHistory"
 ]
 }
+
 ]
+
 });
 
 const closeButton =
@@ -106,67 +152,31 @@ new ButtonBuilder()
 .setLabel("🔒 Close Ticket")
 .setStyle(ButtonStyle.Danger);
 
-const claimButton =
-new ButtonBuilder()
-.setCustomId("claim_ticket")
-.setLabel("🛠 Claim Ticket")
-.setStyle(ButtonStyle.Success);
-
 const row =
 new ActionRowBuilder()
-.addComponents(
-claimButton,
-closeButton
-);
-
-const embed =
-new EmbedBuilder()
-.setColor("Green")
-.setTitle("🎫 Ticket Created")
-.setDescription(
-`Welcome ${interaction.user} 👋
-
-Please explain your issue and staff will help you soon.`
-)
-.setFooter({
-text: "BloxDen Support"
-});
+.addComponents(closeButton);
 
 await ticket.send({
-content: `${interaction.user}`,
-embeds: [embed],
+content:
+`🎫 Welcome ${interaction.user}
+
+Please explain your issue and staff will help you soon.`,
 components: [row]
 });
 
 return interaction.reply({
-content: `✅ Ticket created: ${ticket}`,
+content:
+`✅ Ticket created: ${ticket}`,
 ephemeral: true
 });
 
 }
 
 /* ========================= */
-/* CLAIM TICKET */
+/* CLOSE BUTTON */
 /* ========================= */
 
 if (
-interaction.isButton() &&
-interaction.customId === "claim_ticket"
-) {
-
-await interaction.reply({
-content:
-`🛠 ${interaction.user} claimed this ticket!`
-});
-
-}
-
-/* ========================= */
-/* CLOSE TICKET */
-/* ========================= */
-
-if (
-interaction.isButton() &&
 interaction.customId === "close_ticket"
 ) {
 
@@ -176,9 +186,11 @@ await interaction.reply(
 
 setTimeout(() => {
 
-interaction.channel.delete().catch(() => {});
+interaction.channel.delete();
 
 }, 5000);
+
+}
 
 }
 
@@ -189,7 +201,7 @@ console.error(err);
 if (!interaction.replied) {
 
 interaction.reply({
-content: "❌ Ticket System Error",
+content: "❌ Ticket Error",
 ephemeral: true
 });
 
