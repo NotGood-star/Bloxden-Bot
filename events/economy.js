@@ -17,19 +17,19 @@ fs.readFileSync("economy.json")
 }
 
 /* ========================= */
-/* SHOP ITEMS */
+/* SHOP */
 /* ========================= */
 
 const shopItems = {
 
-merchant: {
-name: "🛒 Merchant Role",
-price: 10000
-},
-
 vip: {
 name: "💎 VIP Role",
 price: 5000
+},
+
+merchant: {
+name: "🛒 Merchant Role",
+price: 10000
 },
 
 king: {
@@ -50,7 +50,40 @@ price: 50000
 };
 
 /* ========================= */
-/* SAVE DATA */
+/* JOBS */
+/* ========================= */
+
+const jobs = {
+
+businessman: {
+name: "💼 Businessman",
+salary: 800
+},
+
+hacker: {
+name: "💻 Hacker",
+salary: 1200
+},
+
+developer: {
+name: "👨‍💻 Developer",
+salary: 1500
+},
+
+bankmanager: {
+name: "🏦 Bank Manager",
+salary: 2000
+},
+
+politician: {
+name: "🗳️ Politician",
+salary: 2500
+}
+
+};
+
+/* ========================= */
+/* SAVE */
 /* ========================= */
 
 function saveData() {
@@ -71,11 +104,14 @@ function createUser(id) {
 if (!economy[id]) {
 
 economy[id] = {
+
 coins: 0,
+job: null,
 inventory: [],
 lastDaily: 0,
-streak: 0,
-job: "Unemployed"
+dailyStreak: 0,
+lastWork: 0
+
 };
 
 }
@@ -105,7 +141,7 @@ interaction.user;
 createUser(user.id);
 
 return interaction.reply(
-`💰 ${user.username} has ${economy[user.id].coins} coins`
+`🪙 ${user.username} has **${economy[user.id].coins}** coins`
 );
 
 }
@@ -118,32 +154,38 @@ if (interaction.commandName === "daily") {
 
 createUser(interaction.user.id);
 
-const now = Date.now();
+const user =
+economy[interaction.user.id];
+
+const cooldown =
+24 * 60 * 60 * 1000;
 
 if (
-now - economy[interaction.user.id].lastDaily
-< 86400000
+Date.now() - user.lastDaily
+< cooldown
 ) {
 
 return interaction.reply({
 content:
-"⏰ You already claimed your daily reward today!",
+"⏳ You already claimed daily today",
 ephemeral: true
 });
 
 }
 
-economy[interaction.user.id].coins += 500;
+user.coins += 1000;
 
-economy[interaction.user.id].lastDaily =
-now;
+user.lastDaily = Date.now();
 
-economy[interaction.user.id].streak += 1;
+user.dailyStreak++;
 
 saveData();
 
 return interaction.reply(
-`💰 You received 500 coins!\n🔥 Daily Streak: ${economy[interaction.user.id].streak}`
+`🎁 You received 1000 🪙
+
+🔥 Daily Streak:
+${user.dailyStreak}`
 );
 
 }
@@ -152,12 +194,18 @@ return interaction.reply(
 /* DAILY STREAK */
 /* ========================= */
 
-if (interaction.commandName === "dailystreak") {
+if (
+interaction.commandName ===
+"dailystreak"
+) {
 
 createUser(interaction.user.id);
 
 return interaction.reply(
-`🔥 Daily Streak: ${economy[interaction.user.id].streak}`
+`🔥 Daily Streak:
+${economy[
+interaction.user.id
+].dailyStreak}`
 );
 
 }
@@ -171,14 +219,16 @@ if (interaction.commandName === "beg") {
 createUser(interaction.user.id);
 
 const amount =
-Math.floor(Math.random() * 300) + 1;
+Math.floor(Math.random() * 500) + 100;
 
-economy[interaction.user.id].coins += amount;
+economy[
+interaction.user.id
+].coins += amount;
 
 saveData();
 
 return interaction.reply(
-`🙏 Someone gave you ${amount} coins`
+`🙏 Someone gave you **${amount} 🪙**`
 );
 
 }
@@ -197,33 +247,37 @@ Math.random() < 0.5;
 if (success) {
 
 const amount =
-Math.floor(Math.random() * 1000) + 100;
+Math.floor(Math.random() * 2000) + 500;
 
-economy[interaction.user.id].coins += amount;
+economy[
+interaction.user.id
+].coins += amount;
 
 saveData();
 
 return interaction.reply(
-`🚔 Crime successful!\n💰 You stole ${amount} coins`
+`🚔 Crime successful
+
+💰 Earned:
+${amount} 🪙`
 );
 
 } else {
 
-const loss =
-Math.floor(Math.random() * 500) + 50;
+const amount =
+Math.floor(Math.random() * 1000) + 200;
 
-economy[interaction.user.id].coins -= loss;
-
-if (economy[interaction.user.id].coins < 0) {
-
-economy[interaction.user.id].coins = 0;
-
-}
+economy[
+interaction.user.id
+].coins -= amount;
 
 saveData();
 
 return interaction.reply(
-`🚨 You got caught!\n💸 Lost ${loss} coins`
+`❌ You got caught
+
+💸 Lost:
+${amount} 🪙`
 );
 
 }
@@ -234,28 +288,32 @@ return interaction.reply(
 /* WORK APPLY */
 /* ========================= */
 
-if (interaction.commandName === "workapply") {
+if (
+interaction.commandName ===
+"workapply"
+) {
 
-const jobs = [
-"👨‍💻 Developer",
-"🍕 Pizza Delivery",
-"🛠 Mechanic",
-"🎨 Designer",
-"🚓 Police",
-"🏦 Banker"
-];
+const job =
+interaction.options.getString("job");
 
 createUser(interaction.user.id);
 
-const job =
-jobs[Math.floor(Math.random() * jobs.length)];
+if (!jobs[job]) {
 
-economy[interaction.user.id].job = job;
+return interaction.reply(
+"❌ Invalid job"
+);
+
+}
+
+economy[
+interaction.user.id
+].job = job;
 
 saveData();
 
 return interaction.reply(
-`✅ You are now working as ${job}`
+`💼 You are now working as ${jobs[job].name}`
 );
 
 }
@@ -268,15 +326,62 @@ if (interaction.commandName === "work") {
 
 createUser(interaction.user.id);
 
-const amount =
-Math.floor(Math.random() * 700) + 100;
+const user =
+economy[interaction.user.id];
 
-economy[interaction.user.id].coins += amount;
+if (!user.job) {
+
+return interaction.reply(
+"❌ Apply for a job first using /workapply"
+);
+
+}
+
+const cooldown =
+5 * 60 * 60 * 1000;
+
+if (
+Date.now() - user.lastWork
+< cooldown
+) {
+
+const remaining =
+cooldown -
+(Date.now() - user.lastWork);
+
+const hours =
+Math.floor(
+remaining / (60 * 60 * 1000)
+);
+
+const minutes =
+Math.floor(
+(remaining % (60 * 60 * 1000))
+/ (60 * 1000)
+);
+
+return interaction.reply({
+content:
+`⏳ Work again in ${hours}h ${minutes}m`,
+ephemeral: true
+});
+
+}
+
+const salary =
+jobs[user.job].salary;
+
+user.coins += salary;
+
+user.lastWork = Date.now();
 
 saveData();
 
 return interaction.reply(
-`💼 You worked as ${economy[interaction.user.id].job}\n💰 Earned ${amount} coins`
+`💼 You worked as ${jobs[user.job].name}
+
+💰 Earned:
+${salary} 🪙`
 );
 
 }
@@ -293,7 +398,7 @@ interaction.options.getUser("user");
 if (target.id === interaction.user.id) {
 
 return interaction.reply(
-"❌ You cannot rob yourself"
+"❌ You can't rob yourself"
 );
 
 }
@@ -301,41 +406,91 @@ return interaction.reply(
 createUser(interaction.user.id);
 createUser(target.id);
 
+if (
+economy[target.id].coins < 500
+) {
+
+return interaction.reply(
+"❌ User has low coins"
+);
+
+}
+
 const success =
 Math.random() < 0.5;
 
 if (success) {
 
 const amount =
-Math.floor(Math.random() * 1000) + 100;
+Math.floor(Math.random() * 1000) + 200;
 
-if (
-economy[target.id].coins < amount
-) {
+economy[
+interaction.user.id
+].coins += amount;
 
-return interaction.reply(
-"❌ User does not have enough coins"
-);
-
-}
-
-economy[target.id].coins -= amount;
-
-economy[interaction.user.id].coins += amount;
+economy[
+target.id
+].coins -= amount;
 
 saveData();
 
 return interaction.reply(
-`🔫 You robbed ${target.username} and stole ${amount} coins`
+`🔫 You robbed ${target}
+
+💰 Stole:
+${amount} 🪙`
 );
 
 } else {
 
 return interaction.reply(
-`🚔 You failed to rob ${target.username}`
+"🚔 Rob failed"
 );
 
 }
+
+}
+
+/* ========================= */
+/* PAY */
+/* ========================= */
+
+if (interaction.commandName === "pay") {
+
+const target =
+interaction.options.getUser("user");
+
+const amount =
+interaction.options.getInteger("amount");
+
+createUser(interaction.user.id);
+createUser(target.id);
+
+if (
+economy[
+interaction.user.id
+].coins < amount
+) {
+
+return interaction.reply(
+"❌ Not enough coins"
+);
+
+}
+
+economy[
+interaction.user.id
+].coins -= amount;
+
+economy[
+target.id
+].coins += amount;
+
+saveData();
+
+return interaction.reply(
+`💸 Sent ${amount} 🪙 to ${target}`
+);
 
 }
 
@@ -345,17 +500,15 @@ return interaction.reply(
 
 if (interaction.commandName === "shop") {
 
-let text =
-"🛒 BloxDen Shop\n\n";
+return interaction.reply(
+`🛒 BloxDen Shop
 
-for (const item in shopItems) {
-
-text +=
-`${shopItems[item].name} — ${shopItems[item].price} Coins\n`;
-
-}
-
-return interaction.reply(text);
+💎 VIP Role — 5000 🪙
+🛒 Merchant Role — 10000 🪙
+👑 King Role — 25000 🪙
+🚀 Boost Role — 30000 🪙
+🌟 Legend Role — 50000 🪙`
+);
 
 }
 
@@ -366,7 +519,9 @@ return interaction.reply(text);
 if (interaction.commandName === "buy") {
 
 const item =
-interaction.options.getString("item");
+interaction.options
+.getString("item")
+.toLowerCase();
 
 createUser(interaction.user.id);
 
@@ -378,30 +533,36 @@ return interaction.reply(
 
 }
 
+const data =
+shopItems[item];
+
 if (
-economy[interaction.user.id].coins
-< shopItems[item].price
+economy[
+interaction.user.id
+].coins < data.price
 ) {
 
 return interaction.reply(
-"❌ You don't have enough coins"
+"❌ Not enough coins"
 );
 
 }
 
-economy[interaction.user.id].coins -=
-shopItems[item].price;
+economy[
+interaction.user.id
+].coins -= data.price;
 
 economy[
 interaction.user.id
-].inventory.push(
-shopItems[item].name
-);
+].inventory.push(data.name);
 
 saveData();
 
 return interaction.reply(
-`✅ Purchased ${shopItems[item].name}`
+`🛒 Purchased ${data.name}
+
+💸 Spent:
+${data.price} 🪙`
 );
 
 }
@@ -410,15 +571,26 @@ return interaction.reply(
 /* INVENTORY */
 /* ========================= */
 
-if (interaction.commandName === "inventory") {
+if (
+interaction.commandName ===
+"inventory"
+) {
 
-createUser(interaction.user.id);
+const user =
+interaction.options.getUser("user") ||
+interaction.user;
+
+createUser(user.id);
 
 const inventory =
-economy[interaction.user.id].inventory;
+economy[user.id].inventory;
 
 return interaction.reply(
-`🎒 Inventory\n\n${inventory.join("\n") || "Empty"}`
+`📦 Inventory of ${user.username}
+
+${inventory.length
+? inventory.join("\n")
+: "Empty"}`
 );
 
 }
@@ -429,19 +601,31 @@ return interaction.reply(
 
 if (interaction.commandName === "profile") {
 
-createUser(interaction.user.id);
+const user =
+interaction.options.getUser("user") ||
+interaction.user;
+
+createUser(user.id);
+
+const data =
+economy[user.id];
 
 return interaction.reply(
-`👤 ${interaction.user.username}'s Profile
+`👤 Profile of ${user.username}
 
-💰 Coins: ${economy[interaction.user.id].coins}
+🪙 Coins:
+${data.coins}
 
-💼 Job: ${economy[interaction.user.id].job}
+💼 Job:
+${data.job
+? jobs[data.job].name
+: "None"}
 
-🔥 Daily Streak: ${economy[interaction.user.id].streak}
+📦 Inventory:
+${data.inventory.length}
 
-🎒 Inventory Items:
-${economy[interaction.user.id].inventory.length}`
+🔥 Daily Streak:
+${data.dailyStreak}`
 );
 
 }
@@ -452,38 +636,62 @@ ${economy[interaction.user.id].inventory.length}`
 
 if (interaction.commandName === "blackjack") {
 
+const bet =
+interaction.options.getInteger("bet");
+
 createUser(interaction.user.id);
 
-const win =
-Math.random() < 0.5;
+if (
+economy[
+interaction.user.id
+].coins < bet
+) {
 
-const amount =
-Math.floor(Math.random() * 1000) + 100;
+return interaction.reply(
+"❌ Not enough coins"
+);
 
-if (win) {
+}
 
-economy[interaction.user.id].coins += amount;
+const player =
+Math.floor(Math.random() * 11) + 10;
+
+const bot =
+Math.floor(Math.random() * 11) + 10;
+
+if (
+player > bot &&
+player <= 21
+) {
+
+economy[
+interaction.user.id
+].coins += bet;
 
 saveData();
 
 return interaction.reply(
-`🃏 You won Blackjack!\n💰 Won ${amount} coins`
+`🃏 Your Total: ${player}
+
+🤖 Bot Total: ${bot}
+
+🎉 You won ${bet} 🪙`
 );
 
 } else {
 
-economy[interaction.user.id].coins -= amount;
-
-if (economy[interaction.user.id].coins < 0) {
-
-economy[interaction.user.id].coins = 0;
-
-}
+economy[
+interaction.user.id
+].coins -= bet;
 
 saveData();
 
 return interaction.reply(
-`💀 You lost Blackjack!\n💸 Lost ${amount} coins`
+`🃏 Your Total: ${player}
+
+🤖 Bot Total: ${bot}
+
+💀 You lost ${bet} 🪙`
 );
 
 }
@@ -496,38 +704,55 @@ return interaction.reply(
 
 if (interaction.commandName === "mines") {
 
+const bet =
+interaction.options.getInteger("bet");
+
 createUser(interaction.user.id);
 
-const win =
-Math.random() < 0.5;
+if (
+economy[
+interaction.user.id
+].coins < bet
+) {
 
-const amount =
-Math.floor(Math.random() * 2000) + 100;
+return interaction.reply(
+"❌ Not enough coins"
+);
+
+}
+
+const win =
+Math.random() < 0.4;
 
 if (win) {
 
-economy[interaction.user.id].coins += amount;
+const reward =
+bet * 2;
+
+economy[
+interaction.user.id
+].coins += reward;
 
 saveData();
 
 return interaction.reply(
-`💣 You survived the mines!\n💰 Won ${amount} coins`
+`💣 You survived the mines!
+
+🎉 Won ${reward} 🪙`
 );
 
 } else {
 
-economy[interaction.user.id].coins -= amount;
-
-if (economy[interaction.user.id].coins < 0) {
-
-economy[interaction.user.id].coins = 0;
-
-}
+economy[
+interaction.user.id
+].coins -= bet;
 
 saveData();
 
 return interaction.reply(
-`💥 BOOM! You hit a mine.\n💸 Lost ${amount} coins`
+`💥 BOOM!
+
+❌ Lost ${bet} 🪙`
 );
 
 }
@@ -541,7 +766,8 @@ console.error(err);
 if (!interaction.replied) {
 
 interaction.reply({
-content: "❌ Economy Error",
+content:
+"❌ Economy Error",
 ephemeral: true
 });
 
