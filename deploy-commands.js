@@ -1,51 +1,61 @@
-require("dotenv").config();
-
 const {
 REST,
 Routes,
-SlashCommandBuilder
+SlashCommandBuilder,
+PermissionFlagsBits
 } = require("discord.js");
+
+require("dotenv").config();
+
+/* ========================= */
+/* ALL COMMANDS */
+/* ========================= */
 
 const commands = [
 
+/* ========================= */
 /* FUN */
+/* ========================= */
 
 new SlashCommandBuilder()
 .setName("ping")
-.setDescription("Ping command"),
+.setDescription("Show bot ping"),
 
 new SlashCommandBuilder()
 .setName("help")
 .setDescription("Show all commands"),
 
 new SlashCommandBuilder()
-.setName("funfact")
-.setDescription("Shows fun fact"),
+.setName("joke")
+.setDescription("Get a random joke"),
 
 new SlashCommandBuilder()
-.setName("joke")
-.setDescription("Shows joke"),
+.setName("funfact")
+.setDescription("Get a random fun fact"),
 
 new SlashCommandBuilder()
 .setName("dice")
-.setDescription("Roll dice"),
+.setDescription("Roll a dice"),
 
 new SlashCommandBuilder()
 .setName("coinflip")
-.setDescription("Flip coin"),
+.setDescription("Flip a coin"),
 
 new SlashCommandBuilder()
 .setName("quote")
-.setDescription("Shows quote"),
+.setDescription("Get a random quote"),
 
+/* ========================= */
 /* ECONOMY */
+/* ========================= */
 
 new SlashCommandBuilder()
 .setName("balance")
 .setDescription("Check balance")
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
+option
+.setName("user")
+.setDescription("Select user")
 ),
 
 new SlashCommandBuilder()
@@ -53,231 +63,434 @@ new SlashCommandBuilder()
 .setDescription("Claim daily reward"),
 
 new SlashCommandBuilder()
-.setName("pay")
-.setDescription("Pay coins")
+.setName("dailystreak")
+.setDescription("Check daily streak"),
+
+new SlashCommandBuilder()
+.setName("beg")
+.setDescription("Beg for coins"),
+
+new SlashCommandBuilder()
+.setName("crime")
+.setDescription("Commit a crime"),
+
+new SlashCommandBuilder()
+.setName("workapply")
+.setDescription("Apply for a job"),
+
+new SlashCommandBuilder()
+.setName("work")
+.setDescription("Work and earn coins"),
+
+new SlashCommandBuilder()
+.setName("rob")
+.setDescription("Rob a user")
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-.setRequired(true)
-)
-.addIntegerOption(option =>
-option.setName("amount")
-.setDescription("Amount")
+option
+.setName("user")
+.setDescription("Target user")
 .setRequired(true)
 ),
 
 new SlashCommandBuilder()
 .setName("shop")
-.setDescription("Open shop"),
+.setDescription("View shop"),
 
 new SlashCommandBuilder()
 .setName("buy")
-.setDescription("Buy item")
+.setDescription("Buy an item")
 .addStringOption(option =>
-option.setName("item")
+option
+.setName("item")
 .setDescription("Item name")
 .setRequired(true)
 ),
 
 new SlashCommandBuilder()
-.setName("work")
-.setDescription("Work for coins"),
+.setName("inventory")
+.setDescription("View inventory"),
 
 new SlashCommandBuilder()
-.setName("gamble")
-.setDescription("Gamble coins")
-.addIntegerOption(option =>
-option.setName("amount")
-.setDescription("Amount")
-.setRequired(true)
-),
-
-new SlashCommandBuilder()
-.setName("rob")
-.setDescription("Rob user")
+.setName("profile")
+.setDescription("View profile")
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-.setRequired(true)
+option
+.setName("user")
+.setDescription("Target user")
 ),
 
-/* LEVEL SYSTEM */
+/* ========================= */
+/* LEVELING */
+/* ========================= */
 
 new SlashCommandBuilder()
 .setName("rank")
-.setDescription("Check rank"),
+.setDescription("View your rank"),
 
 new SlashCommandBuilder()
 .setName("leaderboard")
-.setDescription("Level leaderboard"),
+.setDescription("View leaderboard"),
 
 new SlashCommandBuilder()
 .setName("setlevelchannel")
-.setDescription("Set level announcement channel")
+.setDescription("Set level channel")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
 .addChannelOption(option =>
-option.setName("channel")
-.setDescription("Channel")
+option
+.setName("channel")
+.setDescription("Select channel")
 .setRequired(true)
 ),
 
-/* TICKETS */
-
 new SlashCommandBuilder()
-.setName("ticket")
-.setDescription("Create ticket"),
-
-new SlashCommandBuilder()
-.setName("ticketpanel")
-.setDescription("Create ticket panel"),
-
-new SlashCommandBuilder()
-.setName("closeticket")
-.setDescription("Close ticket"),
-
-/* INVITES */
-
-new SlashCommandBuilder()
-.setName("invite")
-.setDescription("Check invites")
+.setName("xpadd")
+.setDescription("Add XP")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-),
-
-new SlashCommandBuilder()
-.setName("inviteleaderboard")
-.setDescription("Invite leaderboard"),
-
-/* MESSAGES */
-
-new SlashCommandBuilder()
-.setName("messages")
-.setDescription("Check messages")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-),
-
-new SlashCommandBuilder()
-.setName("messageleaderboard")
-.setDescription("Message leaderboard"),
-
-/* REACTION ROLE */
-
-new SlashCommandBuilder()
-.setName("reactionrole")
-.setDescription("Create reaction role")
-.addRoleOption(option =>
-option.setName("role")
-.setDescription("Role")
+option
+.setName("user")
+.setDescription("Target user")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option
+.setName("amount")
+.setDescription("XP amount")
 .setRequired(true)
 ),
 
+new SlashCommandBuilder()
+.setName("xpremove")
+.setDescription("Remove XP")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option
+.setName("amount")
+.setDescription("XP amount")
+.setRequired(true)
+),
+
+/* ========================= */
 /* MODERATION */
+/* ========================= */
 
 new SlashCommandBuilder()
 .setName("ban")
-.setDescription("Ban member")
+.setDescription("Ban a user")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.BanMembers
+)
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
+option
+.setName("user")
+.setDescription("Target user")
 .setRequired(true)
+)
+.addStringOption(option =>
+option
+.setName("reason")
+.setDescription("Reason")
 ),
 
 new SlashCommandBuilder()
 .setName("kick")
-.setDescription("Kick member")
+.setDescription("Kick a user")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.KickMembers
+)
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
+option
+.setName("user")
+.setDescription("Target user")
 .setRequired(true)
+)
+.addStringOption(option =>
+option
+.setName("reason")
+.setDescription("Reason")
 ),
 
 new SlashCommandBuilder()
 .setName("timeout")
-.setDescription("Timeout member")
+.setDescription("Timeout a user")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.ModerateMembers
+)
 .addUserOption(option =>
-option.setName("user")
-.setDescription("User")
+option
+.setName("user")
+.setDescription("Target user")
 .setRequired(true)
 )
 .addIntegerOption(option =>
-option.setName("minutes")
-.setDescription("Minutes")
+option
+.setName("minutes")
+.setDescription("Timeout duration")
 .setRequired(true)
+)
+.addStringOption(option =>
+option
+.setName("reason")
+.setDescription("Reason")
+),
+
+new SlashCommandBuilder()
+.setName("warn")
+.setDescription("Warn a user")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.ModerateMembers
+)
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+.setRequired(true)
+)
+.addStringOption(option =>
+option
+.setName("reason")
+.setDescription("Reason")
 ),
 
 new SlashCommandBuilder()
 .setName("clear")
 .setDescription("Clear messages")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.ManageMessages
+)
 .addIntegerOption(option =>
-option.setName("amount")
+option
+.setName("amount")
 .setDescription("Amount")
 .setRequired(true)
 ),
 
 new SlashCommandBuilder()
-.setName("warn")
-.setDescription("Warn member")
-.addUserOption(option =>
-option.setName("user")
-.setDescription("User")
-.setRequired(true)
-)
-.addStringOption(option =>
-option.setName("reason")
-.setDescription("Reason")
+.setName("snipe")
+.setDescription("View deleted message"),
+
+/* ========================= */
+/* TICKETS */
+/* ========================= */
+
+new SlashCommandBuilder()
+.setName("ticketpanel")
+.setDescription("Create ticket panel")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
 ),
 
+new SlashCommandBuilder()
+.setName("closeticket")
+.setDescription("Close current ticket"),
+
+/* ========================= */
 /* GIVEAWAY */
+/* ========================= */
 
 new SlashCommandBuilder()
 .setName("giveaway")
 .setDescription("Start giveaway")
 .addStringOption(option =>
-option.setName("prize")
+option
+.setName("prize")
 .setDescription("Prize")
 .setRequired(true)
 )
-.addIntegerOption(option =>
-option.setName("duration")
-.setDescription("Duration in seconds")
+.addStringOption(option =>
+option
+.setName("duration")
+.setDescription("Example: 10s, 5m, 1h")
 .setRequired(true)
 )
 .addIntegerOption(option =>
-option.setName("winners")
-.setDescription("Number of winners")
+option
+.setName("winners")
+.setDescription("Winner count")
 .setRequired(true)
 ),
 
 new SlashCommandBuilder()
 .setName("reroll")
-.setDescription("Reroll giveaway"),
+.setDescription("Reroll giveaway")
+.addStringOption(option =>
+option
+.setName("messageid")
+.setDescription("Giveaway message ID")
+.setRequired(true)
+),
 
 new SlashCommandBuilder()
 .setName("endgiveaway")
 .setDescription("End giveaway")
+.addStringOption(option =>
+option
+.setName("messageid")
+.setDescription("Giveaway message ID")
+.setRequired(true)
+),
+
+/* ========================= */
+/* AUTOMOD */
+/* ========================= */
+
+new SlashCommandBuilder()
+.setName("automodsetchannel")
+.setDescription("Set automod log channel")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
+.addChannelOption(option =>
+option
+.setName("channel")
+.setDescription("Select channel")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("automodon")
+.setDescription("Enable automod")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+),
+
+new SlashCommandBuilder()
+.setName("automodoff")
+.setDescription("Disable automod")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+),
+
+/* ========================= */
+/* WELCOME */
+/* ========================= */
+
+new SlashCommandBuilder()
+.setName("welcomesetchannel")
+.setDescription("Set welcome channel")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
+.addChannelOption(option =>
+option
+.setName("channel")
+.setDescription("Select channel")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("goodbyesetchannel")
+.setDescription("Set goodbye channel")
+.setDefaultMemberPermissions(
+PermissionFlagsBits.Administrator
+)
+.addChannelOption(option =>
+option
+.setName("channel")
+.setDescription("Select channel")
+.setRequired(true)
+),
+
+/* ========================= */
+/* UTILITY */
+/* ========================= */
+
+new SlashCommandBuilder()
+.setName("avatar")
+.setDescription("View avatar")
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+),
+
+new SlashCommandBuilder()
+.setName("userinfo")
+.setDescription("View user info")
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+),
+
+new SlashCommandBuilder()
+.setName("serverinfo")
+.setDescription("View server info"),
+
+new SlashCommandBuilder()
+.setName("afk")
+.setDescription("Set AFK")
+.addStringOption(option =>
+option
+.setName("reason")
+.setDescription("Reason")
+),
+
+new SlashCommandBuilder()
+.setName("poll")
+.setDescription("Create poll")
+.addStringOption(option =>
+option
+.setName("question")
+.setDescription("Poll question")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("suggest")
+.setDescription("Create suggestion")
+.addStringOption(option =>
+option
+.setName("suggestion")
+.setDescription("Suggestion")
+.setRequired(true)
+)
 
 ].map(command => command.toJSON());
+
+/* ========================= */
+/* REST */
+/* ========================= */
 
 const rest = new REST({
 version: "10"
 }).setToken(process.env.TOKEN);
 
+/* ========================= */
+/* DEPLOY */
+/* ========================= */
+
 (async () => {
 
 try {
 
-console.log("Registering slash commands...");
+console.log("🚀 Deploying commands...");
 
 await rest.put(
-Routes.applicationCommands(process.env.CLIENT_ID),
-{
-body: commands
-}
+
+Routes.applicationCommands(
+process.env.CLIENT_ID
+),
+
+{ body: commands }
+
 );
 
-console.log("Slash commands registered!");
+console.log(
+"✅ Commands deployed successfully"
+);
 
 } catch (err) {
 
