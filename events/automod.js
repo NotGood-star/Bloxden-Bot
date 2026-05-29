@@ -6,13 +6,62 @@ module.exports = (client) => {
 /* DATABASE */
 /* ========================= */
 
-let automodData = {};
+let automod = {};
 
 if (fs.existsSync("automod.json")) {
 
-automodData = JSON.parse(
+automod = JSON.parse(
 fs.readFileSync("automod.json")
 );
+
+}
+
+/* ========================= */
+/* BAD WORDS */
+/* ========================= */
+
+const badWords = [
+"fuck",
+"bitch",
+"nigga",
+"asshole",
+"shit",
+"mf"
+];
+
+/* ========================= */
+/* SPAM CACHE */
+/* ========================= */
+
+const spamMap = new Map();
+
+/* ========================= */
+/* SAVE */
+/* ========================= */
+
+function saveData() {
+
+fs.writeFileSync(
+"automod.json",
+JSON.stringify(automod, null, 2)
+);
+
+}
+
+/* ========================= */
+/* CREATE GUILD */
+/* ========================= */
+
+function createGuild(id) {
+
+if (!automod[id]) {
+
+automod[id] = {
+enabled: false,
+logChannel: null
+};
+
+}
 
 }
 
@@ -25,102 +74,52 @@ client.on("messageCreate", async message => {
 if (!message.guild) return;
 if (message.author.bot) return;
 
-const guildId = message.guild.id;
+createGuild(message.guild.id);
 
-if (
-!automodData[guildId] ||
-!automodData[guildId].enabled
-) return;
+if (!automod[message.guild.id].enabled)
+return;
 
-/* LOG CHANNEL */
+const logChannelId =
+automod[message.guild.id].logChannel;
 
 const logChannel =
 message.guild.channels.cache.get(
-automodData[guildId].logChannel
+logChannelId
 );
 
 /* ========================= */
 /* BAD WORD FILTER */
 /* ========================= */
 
-const badWords = [
-"badword1",
-"badword2",
-"badword3"
-];
+const content =
+message.content.toLowerCase();
 
 if (
 badWords.some(word =>
-message.content.toLowerCase().includes(word)
+content.includes(word)
 )
 ) {
 
-await message.delete().catch(() => {});
+await message.delete();
 
-if (logChannel) {
-
-logChannel.send(
-`🚫 Deleted bad word message from ${message.author}`
-);
-
-}
-
-return message.channel.send(
+message.channel.send(
 `🚫 ${message.author}, bad words are not allowed!`
 );
 
-}
-
-/* ========================= */
-/* ANTI LINK */
-/* ========================= */
-
-const linkRegex =
-/https?:\/\/[^\s]+/gi;
-
-if (linkRegex.test(message.content)) {
-
-await message.delete().catch(() => {});
-
 if (logChannel) {
 
 logChannel.send(
-`🔗 Deleted link from ${message.author}`
+`🚫 Bad Word Detected
+
+👤 User: ${message.author.tag}
+
+💬 Message:
+${message.content}`
 );
 
 }
 
-return message.channel.send(
-`🔗 ${message.author}, links are not allowed!`
-);
-
-}
-
-/* ========================= */
-/* ANTI CAPS */
-/* ========================= */
-
-const caps =
-message.content.replace(/[^A-Z]/g, "").length;
-
-if (
-caps > 20 &&
-message.content.length > 25
-) {
-
-await message.delete().catch(() => {});
-
-if (logChannel) {
-
-logChannel.send(
-`📢 Deleted caps message from ${message.author}`
-);
-
-}
-
-return message.channel.send(
-`📢 ${message.author}, avoid excessive caps!`
-);
+return;
 
 }
 
@@ -128,28 +127,51 @@ return message.channel.send(
 /* ANTI SPAM */
 /* ========================= */
 
-if (message.content.length > 500) {
+if (!spamMap.has(message.author.id)) {
 
-await message.delete().catch(() => {});
+spamMap.set(message.author.id, []);
+
+}
+
+const userMessages =
+spamMap.get(message.author.id);
+
+userMessages.push(Date.now());
+
+const filtered =
+userMessages.filter(
+time => Date.now() - time < 5000
+);
+
+spamMap.set(
+message.author.id,
+filtered
+);
+
+if (filtered.length >= 5) {
+
+await message.delete();
+
+message.channel.send(
+`⚠️ ${message.author}, stop spamming!`
+);
 
 if (logChannel) {
 
 logChannel.send(
-`⚠️ Deleted spam/long message from ${message.author}`
+`⚠️ Spam Detected
+
+👤 User: ${message.author.tag}`
 );
 
 }
-
-return message.channel.send(
-`⚠️ ${message.author}, message too long!`
-);
 
 }
 
 });
 
 /* ========================= */
-/* INTERACTION COMMANDS */
+/* INTERACTIONS */
 /* ========================= */
 
 client.on("interactionCreate", async interaction => {
@@ -159,34 +181,40 @@ if (!interaction.isChatInputCommand()) return;
 try {
 
 /* ========================= */
-/* SET AUTOMOD CHANNEL */
+/* SET LOG CHANNEL */
 /* ========================= */
 
 if (
-interaction.commandName === "automodsetchannel"
+interaction.commandName ===
+"automodsetchannel"
 ) {
 
-const channel =
-interaction.options.getChannel("channel");
+if (
+!interaction.member.permissions.has(
+"Administrator"
+)
+) {
 
-if (!automodData[interaction.guild.id]) {
-
-automodData[interaction.guild.id] = {};
+return interaction.reply({
+content:
+"❌ You need Administrator permission",
+ephemeral: true
+});
 
 }
 
-automodData[
+const channel =
+interaction.options.getChannel(
+"channel"
+);
+
+createGuild(interaction.guild.id);
+
+automod[
 interaction.guild.id
 ].logChannel = channel.id;
 
-automodData[
-interaction.guild.id
-].enabled = true;
-
-fs.writeFileSync(
-"automod.json",
-JSON.stringify(automodData, null, 2)
-);
+saveData();
 
 return interaction.reply(
 `✅ AutoMod log channel set to ${channel}`
@@ -195,59 +223,75 @@ return interaction.reply(
 }
 
 /* ========================= */
-/* ENABLE AUTOMOD */
+/* AUTOMOD ON */
 /* ========================= */
 
 if (
-interaction.commandName === "automodon"
+interaction.commandName ===
+"automodon"
 ) {
 
-if (!automodData[interaction.guild.id]) {
+if (
+!interaction.member.permissions.has(
+"Administrator"
+)
+) {
 
-automodData[interaction.guild.id] = {};
+return interaction.reply({
+content:
+"❌ You need Administrator permission",
+ephemeral: true
+});
 
 }
 
-automodData[
+createGuild(interaction.guild.id);
+
+automod[
 interaction.guild.id
 ].enabled = true;
 
-fs.writeFileSync(
-"automod.json",
-JSON.stringify(automodData, null, 2)
-);
+saveData();
 
 return interaction.reply(
-"✅ AutoMod enabled"
+"✅ AutoMod Enabled"
 );
 
 }
 
 /* ========================= */
-/* DISABLE AUTOMOD */
+/* AUTOMOD OFF */
 /* ========================= */
 
 if (
-interaction.commandName === "automodoff"
+interaction.commandName ===
+"automodoff"
 ) {
 
-if (!automodData[interaction.guild.id]) {
+if (
+!interaction.member.permissions.has(
+"Administrator"
+)
+) {
 
-automodData[interaction.guild.id] = {};
+return interaction.reply({
+content:
+"❌ You need Administrator permission",
+ephemeral: true
+});
 
 }
 
-automodData[
+createGuild(interaction.guild.id);
+
+automod[
 interaction.guild.id
 ].enabled = false;
 
-fs.writeFileSync(
-"automod.json",
-JSON.stringify(automodData, null, 2)
-);
+saveData();
 
 return interaction.reply(
-"❌ AutoMod disabled"
+"❌ AutoMod Disabled"
 );
 
 }
@@ -259,7 +303,8 @@ console.error(err);
 if (!interaction.replied) {
 
 interaction.reply({
-content: "❌ AutoMod Error",
+content:
+"❌ AutoMod Error",
 ephemeral: true
 });
 
