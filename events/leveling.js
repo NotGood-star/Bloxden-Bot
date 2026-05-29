@@ -137,7 +137,7 @@ saveData();
 });
 
 /* ========================= */
-/* COMMANDS */
+/* INTERACTIONS */
 /* ========================= */
 
 client.on("interactionCreate", async interaction => {
