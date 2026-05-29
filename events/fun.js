@@ -1,86 +1,224 @@
-const { Events } = require("discord.js");
+module.exports = (client) => {
 
-module.exports = {
-  name: Events.InteractionCreate,
+client.on("interactionCreate", async interaction => {
 
-  async execute(interaction) {
-    if (!interaction.isChatInputCommand()) return;
+if (!interaction.isChatInputCommand()) return;
 
-    const cmd = interaction.commandName;
+try {
 
-    try {
+/* ========================= */
+/* PING */
+/* ========================= */
 
-      // 🏓 Ping
-      if (cmd === "ping") {
-        const msg = await interaction.reply({ content: "🏓 Pinging...", fetchReply: true });
-        const latency = msg.createdTimestamp - interaction.createdTimestamp;
-        return interaction.editReply(`🏓 Pong! **${latency}ms**`);
-      }
+if (interaction.commandName === "ping") {
 
-      // 📚 Help (Fun section)
-      if (cmd === "help") {
-        return interaction.reply({
-          content:
-            `🎮 **Fun Commands**\n\n` +
-            `🏓 /ping - Check bot speed\n` +
-            `😂 /joke - Random joke\n` +
-            `🧠 /funfact - Random fact\n` +
-            `🎲 /dice - Roll a dice\n` +
-            `🪙 /coinflip - Heads or Tails\n` +
-            `✨ /quote - Motivational quote`
-        });
-      }
+return interaction.reply(
+`🏓 Pong! ${client.ws.ping}ms`
+);
 
-      // 😂 Joke
-      if (cmd === "joke") {
-        const jokes = [
-          "Why did the bot cross the road? To debug the other side!",
-          "I told my code a joke... but it didn't laugh 😂",
-          "Why do programmers prefer dark mode? Because light attracts bugs!"
-        ];
-        return interaction.reply(`😂 ${jokes[Math.floor(Math.random() * jokes.length)]}`);
-      }
+}
 
-      // 🧠 Fun Fact
-      if (cmd === "funfact") {
-        const facts = [
-          "Octopuses have three hearts 🐙",
-          "Honey never spoils 🍯",
-          "Bananas are berries, strawberries are not 🍌",
-          "Sharks existed before trees 🦈"
-        ];
-        return interaction.reply(`🧠 ${facts[Math.floor(Math.random() * facts.length)]}`);
-      }
+/* ========================= */
+/* HELP */
+/* ========================= */
 
-      // 🎲 Dice
-      if (cmd === "dice") {
-        const roll = Math.floor(Math.random() * 6) + 1;
-        return interaction.reply(`🎲 You rolled **${roll}**`);
-      }
+if (interaction.commandName === "help") {
 
-      // 🪙 Coinflip
-      if (cmd === "coinflip") {
-        const result = Math.random() < 0.5 ? "Heads" : "Tails";
-        return interaction.reply(`🪙 Result: **${result}**`);
-      }
+return interaction.reply(
+`📜 BloxDen Commands
 
-      // ✨ Quote
-      if (cmd === "quote") {
-        const quotes = [
-          "Stay hungry, stay foolish.",
-          "Code is like humor. When you have to explain it, it’s bad.",
-          "Fix the cause, not the symptom.",
-          "Dream big. Start small. Act now."
-        ];
-        return interaction.reply(`✨ "${quotes[Math.floor(Math.random() * quotes.length)]}"`);
-      }
+🎮 Fun
+/ping
+/help
+/joke
+/funfact
+/dice
+/coinflip
+/quote
 
-    } catch (err) {
-      console.error("Fun Command Error:", err);
-      return interaction.reply({
-        content: "❌ Something went wrong in Fun commands!",
-        ephemeral: true
-      });
-    }
-  }
+💰 Economy
+/balance
+/daily
+/dailystreak
+/beg
+/crime
+/workapply
+/work
+/rob
+/shop
+/buy
+/inventory
+/profile
+/blackjack
+/mines
+
+🏆 Levels
+/rank
+/leaderboard
+/setlevelchannel
+/xpadd
+/xpremove
+
+🛡 Moderation
+/ban
+/kick
+/timeout
+/warn
+/clear
+/snipe
+
+🎫 Tickets
+/ticketpanel
+/closeticket
+
+🎉 Giveaway
+/giveaway
+/reroll
+/endgiveaway
+
+🤖 AutoMod
+/automodsetchannel
+/automodon
+/automodoff
+
+👋 Welcome
+/welcomesetchannel
+/goodbyesetchannel`
+);
+
+}
+
+/* ========================= */
+/* JOKE */
+/* ========================= */
+
+if (interaction.commandName === "joke") {
+
+const jokes = [
+
+"😂 Why did the developer go broke? Because he used up all his cache.",
+
+"🤣 Discord mods never sleep.",
+
+"😂 Roblox servers lag more than my brain during exams.",
+
+"💀 Vornycs is richest person on Earth.",
+
+"🤣 JavaScript developers hate bugs… unless it's a feature."
+
+];
+
+const joke =
+jokes[Math.floor(Math.random() * jokes.length)];
+
+return interaction.reply(joke);
+
+}
+
+/* ========================= */
+/* FUN FACT */
+/* ========================= */
+
+if (interaction.commandName === "funfact") {
+
+const facts = [
+
+"🤖 This bot was made for BloxDen.",
+
+"👑 Our Helping Team has 3 Members:\nOwner - Not_Good\nCo-Owner - Vornycs\nHelper - Zerphy",
+
+"🚀 Discord bots are powered using APIs.",
+
+"🔥 Coding becomes easier with practice.",
+
+"💻 JavaScript is one of the most popular coding languages."
+
+];
+
+const fact =
+facts[Math.floor(Math.random() * facts.length)];
+
+return interaction.reply(fact);
+
+}
+
+/* ========================= */
+/* DICE */
+/* ========================= */
+
+if (interaction.commandName === "dice") {
+
+const number =
+Math.floor(Math.random() * 6) + 1;
+
+return interaction.reply(
+`🎲 You rolled **${number}**`
+);
+
+}
+
+/* ========================= */
+/* COIN FLIP */
+/* ========================= */
+
+if (interaction.commandName === "coinflip") {
+
+const result =
+Math.random() < 0.5
+? "Heads"
+: "Tails";
+
+return interaction.reply(
+`🪙 Coin landed on **${result}**`
+);
+
+}
+
+/* ========================= */
+/* QUOTE */
+/* ========================= */
+
+if (interaction.commandName === "quote") {
+
+const quotes = [
+
+"🔥 Never give up.",
+
+"🚀 Dream big and work hard.",
+
+"💪 Success comes from consistency.",
+
+"⚡ Small progress is still progress.",
+
+"🏆 Winners never quit."
+
+];
+
+const quote =
+quotes[Math.floor(Math.random() * quotes.length)];
+
+return interaction.reply(
+`📖 ${quote}`
+);
+
+}
+
+} catch (err) {
+
+console.error(err);
+
+if (!interaction.replied) {
+
+interaction.reply({
+content:
+"❌ Fun System Error",
+ephemeral: true
+});
+
+}
+
+}
+
+});
+
 };
