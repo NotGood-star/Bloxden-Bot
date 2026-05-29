@@ -8,7 +8,7 @@ PermissionFlagsBits
 require("dotenv").config();
 
 /* ========================= */
-/* ALL COMMANDS */
+/* COMMANDS */
 /* ========================= */
 
 const commands = [
@@ -55,7 +55,7 @@ new SlashCommandBuilder()
 .addUserOption(option =>
 option
 .setName("user")
-.setDescription("Select user")
+.setDescription("Target user")
 ),
 
 new SlashCommandBuilder()
@@ -64,7 +64,7 @@ new SlashCommandBuilder()
 
 new SlashCommandBuilder()
 .setName("dailystreak")
-.setDescription("Check daily streak"),
+.setDescription("View daily streak"),
 
 new SlashCommandBuilder()
 .setName("beg")
@@ -76,7 +76,20 @@ new SlashCommandBuilder()
 
 new SlashCommandBuilder()
 .setName("workapply")
-.setDescription("Apply for a job"),
+.setDescription("Apply for a job")
+.addStringOption(option =>
+option
+.setName("job")
+.setDescription("Choose job")
+.setRequired(true)
+.addChoices(
+{ name: "💼 Businessman", value: "businessman" },
+{ name: "💻 Hacker", value: "hacker" },
+{ name: "👨‍💻 Developer", value: "developer" },
+{ name: "🏦 Bank Manager", value: "bankmanager" },
+{ name: "🗳️ Politician", value: "politician" }
+)
+),
 
 new SlashCommandBuilder()
 .setName("work")
@@ -84,11 +97,27 @@ new SlashCommandBuilder()
 
 new SlashCommandBuilder()
 .setName("rob")
-.setDescription("Rob a user")
+.setDescription("Rob someone")
 .addUserOption(option =>
 option
 .setName("user")
 .setDescription("Target user")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("pay")
+.setDescription("Pay someone coins")
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+.setRequired(true)
+)
+.addIntegerOption(option =>
+option
+.setName("amount")
+.setDescription("Amount")
 .setRequired(true)
 ),
 
@@ -104,11 +133,23 @@ option
 .setName("item")
 .setDescription("Item name")
 .setRequired(true)
+.addChoices(
+{ name: "💎 VIP Role", value: "vip" },
+{ name: "🛒 Merchant Role", value: "merchant" },
+{ name: "👑 King Role", value: "king" },
+{ name: "🚀 Boost Role", value: "boost" },
+{ name: "🌟 Legend Role", value: "legend" }
+)
 ),
 
 new SlashCommandBuilder()
 .setName("inventory")
-.setDescription("View inventory"),
+.setDescription("View inventory")
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("Target user")
+),
 
 new SlashCommandBuilder()
 .setName("profile")
@@ -119,13 +160,33 @@ option
 .setDescription("Target user")
 ),
 
+new SlashCommandBuilder()
+.setName("blackjack")
+.setDescription("Play blackjack")
+.addIntegerOption(option =>
+option
+.setName("bet")
+.setDescription("Bet amount")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("mines")
+.setDescription("Play mines")
+.addIntegerOption(option =>
+option
+.setName("bet")
+.setDescription("Bet amount")
+.setRequired(true)
+),
+
 /* ========================= */
 /* LEVELING */
 /* ========================= */
 
 new SlashCommandBuilder()
 .setName("rank")
-.setDescription("View your rank"),
+.setDescription("View rank"),
 
 new SlashCommandBuilder()
 .setName("leaderboard")
@@ -237,7 +298,7 @@ option
 .addIntegerOption(option =>
 option
 .setName("minutes")
-.setDescription("Timeout duration")
+.setDescription("Minutes")
 .setRequired(true)
 )
 .addStringOption(option =>
@@ -279,7 +340,7 @@ option
 
 new SlashCommandBuilder()
 .setName("snipe")
-.setDescription("View deleted message"),
+.setDescription("Show deleted message"),
 
 /* ========================= */
 /* TICKETS */
@@ -294,7 +355,7 @@ PermissionFlagsBits.Administrator
 
 new SlashCommandBuilder()
 .setName("closeticket")
-.setDescription("Close current ticket"),
+.setDescription("Close ticket"),
 
 /* ========================= */
 /* GIVEAWAY */
@@ -319,26 +380,6 @@ option
 option
 .setName("winners")
 .setDescription("Winner count")
-.setRequired(true)
-),
-
-new SlashCommandBuilder()
-.setName("reroll")
-.setDescription("Reroll giveaway")
-.addStringOption(option =>
-option
-.setName("messageid")
-.setDescription("Giveaway message ID")
-.setRequired(true)
-),
-
-new SlashCommandBuilder()
-.setName("endgiveaway")
-.setDescription("End giveaway")
-.addStringOption(option =>
-option
-.setName("messageid")
-.setDescription("Giveaway message ID")
 .setRequired(true)
 ),
 
@@ -444,7 +485,7 @@ new SlashCommandBuilder()
 .addStringOption(option =>
 option
 .setName("question")
-.setDescription("Poll question")
+.setDescription("Question")
 .setRequired(true)
 ),
 
@@ -489,7 +530,7 @@ process.env.CLIENT_ID
 );
 
 console.log(
-"✅ Commands deployed successfully"
+"✅ Successfully deployed commands"
 );
 
 } catch (err) {
