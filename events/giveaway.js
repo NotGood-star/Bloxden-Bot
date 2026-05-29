@@ -7,22 +7,26 @@ EmbedBuilder
 
 module.exports = (client) => {
 
+/* ========================= */
+/* GIVEAWAY STORAGE */
+/* ========================= */
+
 client.giveaways = new Map();
 
+/* ========================= */
 /* TIME PARSER */
+/* ========================= */
 
-function parseDuration(time) {
+function parseTime(time) {
 
 const match =
 time.match(/^(\d+)(s|m|h|d)$/);
 
 if (!match) return null;
 
-const value =
-parseInt(match[1]);
+const value = parseInt(match[1]);
 
-const unit =
-match[2];
+const unit = match[2];
 
 switch (unit) {
 
@@ -45,63 +49,76 @@ return null;
 
 }
 
-client.on("interactionCreate", async interaction => {
+/* ========================= */
+/* FORMAT TIME */
+/* ========================= */
 
-if (
-!interaction.isChatInputCommand() &&
-!interaction.isButton()
-) return;
+function formatTime(ms) {
+
+const seconds =
+Math.floor(ms / 1000);
+
+const minutes =
+Math.floor(seconds / 60);
+
+const hours =
+Math.floor(minutes / 60);
+
+const days =
+Math.floor(hours / 24);
+
+if (days > 0) return `${days}d`;
+if (hours > 0) return `${hours}h`;
+if (minutes > 0) return `${minutes}m`;
+
+return `${seconds}s`;
+
+}
+
+/* ========================= */
+/* INTERACTION EVENT */
+/* ========================= */
+
+client.on("interactionCreate", async interaction => {
 
 try {
 
 /* ========================= */
-/* START GIVEAWAY */
+/* SLASH COMMANDS */
 /* ========================= */
 
-if (
-interaction.isChatInputCommand() &&
-interaction.commandName === "giveaway"
-) {
+if (interaction.isChatInputCommand()) {
+
+/* ========================= */
+/* CREATE GIVEAWAY */
+/* ========================= */
+
+if (interaction.commandName === "giveaway") {
 
 const prize =
 interaction.options.getString("prize");
 
-const durationInput =
+const duration =
 interaction.options.getString("duration");
 
 const winners =
 interaction.options.getInteger("winners");
 
-const duration =
-parseDuration(durationInput);
+const ms =
+parseTime(duration);
 
-if (!duration) {
+if (!ms) {
 
 return interaction.reply({
 content:
-"❌ Invalid duration.\nExamples: 10s, 5m, 2h, 1d",
+"❌ Invalid duration.\nUse: 10s, 5m, 2h, 1d",
 ephemeral: true
 });
 
 }
 
-const embed =
-new EmbedBuilder()
-.setColor("Gold")
-.setTitle("🎉 GIVEAWAY 🎉")
-.setDescription(
-`🏆 Prize: **${prize}**
-
-👑 Winners: **${winners}**
-
-⏰ Duration: **${durationInput}**
-
-🎊 Click the button below to join!`
-)
-.setFooter({
-text: `Hosted by ${interaction.user.username}`
-})
-.setTimestamp();
+const endTime =
+Date.now() + ms;
 
 const button =
 new ButtonBuilder()
@@ -112,6 +129,23 @@ new ButtonBuilder()
 const row =
 new ActionRowBuilder()
 .addComponents(button);
+
+const embed =
+new EmbedBuilder()
+.setTitle("🎉 BloxDen Giveaway")
+.setDescription(
+`🏆 Prize: **${prize}**
+
+👑 Winners: **${winners}**
+
+⏰ Ends In: **${duration}**
+
+🎊 Click the button below to join!`
+)
+.setFooter({
+text:
+`Hosted by ${interaction.user.username}`
+});
 
 const msg =
 await interaction.reply({
@@ -124,10 +158,14 @@ client.giveaways.set(msg.id, {
 users: [],
 prize,
 winners,
-host: interaction.user.id
+ended: false,
+messageId: msg.id,
+channelId: interaction.channel.id
 });
 
+/* ========================= */
 /* END GIVEAWAY */
+/* ========================= */
 
 setTimeout(async () => {
 
@@ -136,45 +174,159 @@ client.giveaways.get(msg.id);
 
 if (!data) return;
 
+if (data.ended) return;
+
+data.ended = true;
+
 if (data.users.length === 0) {
 
-await interaction.channel.send(
+return interaction.channel.send(
 "❌ No one joined the giveaway."
 );
 
-client.giveaways.delete(msg.id);
-
-return;
-
 }
 
-/* PICK WINNERS */
-
 const shuffled =
-data.users.sort(() => 0.5 - Math.random());
+data.users.sort(
+() => 0.5 - Math.random()
+);
 
 const selected =
 shuffled.slice(0, winners);
 
-await interaction.channel.send(
-`🎉 Congratulations ${selected.map(id => `<@${id}>`).join(", ")}
+interaction.channel.send(
+`🎉 Giveaway Ended!
 
-🏆 You won **${prize}**`
+🏆 Prize: **${prize}**
+
+🎊 Winner(s):
+${selected.map(
+u => `<@${u}>`
+).join(", ")}`
 );
 
-client.giveaways.delete(msg.id);
-
-}, duration);
+}, ms);
 
 }
+
+/* ========================= */
+/* REROLL */
+/* ========================= */
+
+if (interaction.commandName === "reroll") {
+
+const messageId =
+interaction.options.getString(
+"messageid"
+);
+
+const data =
+client.giveaways.get(messageId);
+
+if (!data) {
+
+return interaction.reply({
+content:
+"❌ Giveaway not found",
+ephemeral: true
+});
+
+}
+
+if (data.users.length === 0) {
+
+return interaction.reply({
+content:
+"❌ No users joined",
+ephemeral: true
+});
+
+}
+
+const winner =
+data.users[
+Math.floor(
+Math.random() *
+data.users.length
+)
+];
+
+return interaction.reply(
+`🎉 New Winner: <@${winner}>`
+);
+
+}
+
+/* ========================= */
+/* END GIVEAWAY COMMAND */
+/* ========================= */
+
+if (
+interaction.commandName === "endgiveaway"
+) {
+
+const messageId =
+interaction.options.getString(
+"messageid"
+);
+
+const data =
+client.giveaways.get(messageId);
+
+if (!data) {
+
+return interaction.reply({
+content:
+"❌ Giveaway not found",
+ephemeral: true
+});
+
+}
+
+data.ended = true;
+
+if (data.users.length === 0) {
+
+return interaction.reply(
+"❌ No users joined"
+);
+
+}
+
+const shuffled =
+data.users.sort(
+() => 0.5 - Math.random()
+);
+
+const selected =
+shuffled.slice(0, data.winners);
+
+return interaction.reply(
+`🎉 Giveaway Ended!
+
+🏆 Winner(s):
+${selected.map(
+u => `<@${u}>`
+).join(", ")}`
+);
+
+}
+
+}
+
+/* ========================= */
+/* BUTTONS */
+/* ========================= */
+
+if (interaction.isButton()) {
 
 /* ========================= */
 /* JOIN GIVEAWAY */
 /* ========================= */
 
 if (
-interaction.isButton() &&
-interaction.customId === "giveaway_join"
+interaction.customId ===
+"giveaway_join"
 ) {
 
 const giveaway =
@@ -184,8 +336,19 @@ interaction.message.id
 
 if (!giveaway) {
 
-return await interaction.reply({
-content: "❌ Giveaway ended.",
+return interaction.reply({
+content:
+"❌ Giveaway not found",
+ephemeral: true
+});
+
+}
+
+if (giveaway.ended) {
+
+return interaction.reply({
+content:
+"❌ Giveaway already ended",
 ephemeral: true
 });
 
@@ -197,8 +360,9 @@ interaction.user.id
 )
 ) {
 
-return await interaction.reply({
-content: "⚠️ You already joined!",
+return interaction.reply({
+content:
+"⚠️ You already joined this giveaway",
 ephemeral: true
 });
 
@@ -208,40 +372,13 @@ giveaway.users.push(
 interaction.user.id
 );
 
-return await interaction.reply({
-content: "🎉 You joined giveaway!",
+return interaction.reply({
+content:
+"🎉 You joined the giveaway!",
 ephemeral: true
 });
 
 }
-
-/* ========================= */
-/* REROLL GIVEAWAY */
-/* ========================= */
-
-if (
-interaction.isChatInputCommand() &&
-interaction.commandName === "reroll"
-) {
-
-return interaction.reply(
-"🔄 Giveaway rerolled!"
-);
-
-}
-
-/* ========================= */
-/* END GIVEAWAY */
-/* ========================= */
-
-if (
-interaction.isChatInputCommand() &&
-interaction.commandName === "endgiveaway"
-) {
-
-return interaction.reply(
-"⏹ Giveaway ended!"
-);
 
 }
 
@@ -251,8 +388,9 @@ console.error(err);
 
 if (!interaction.replied) {
 
-await interaction.reply({
-content: "❌ Giveaway System Error",
+interaction.reply({
+content:
+"❌ Giveaway System Error",
 ephemeral: true
 });
 
