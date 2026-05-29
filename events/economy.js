@@ -17,7 +17,7 @@ fs.readFileSync("economy.json")
 }
 
 /* ========================= */
-/* SHOP */
+/* SHOP ITEMS */
 /* ========================= */
 
 const shopItems = {
@@ -35,12 +35,22 @@ price: 5000
 king: {
 name: "👑 King Role",
 price: 25000
+},
+
+boost: {
+name: "🚀 Boost Role",
+price: 30000
+},
+
+legend: {
+name: "🌟 Legend Role",
+price: 50000
 }
 
 };
 
 /* ========================= */
-/* SAVE */
+/* SAVE DATA */
 /* ========================= */
 
 function saveData() {
@@ -117,7 +127,7 @@ now - economy[interaction.user.id].lastDaily
 
 return interaction.reply({
 content:
-"⏰ You already claimed daily reward!",
+"⏰ You already claimed your daily reward today!",
 ephemeral: true
 });
 
@@ -147,7 +157,7 @@ if (interaction.commandName === "dailystreak") {
 createUser(interaction.user.id);
 
 return interaction.reply(
-`🔥 Your Daily Streak: ${economy[interaction.user.id].streak}`
+`🔥 Daily Streak: ${economy[interaction.user.id].streak}`
 );
 
 }
@@ -230,7 +240,9 @@ const jobs = [
 "👨‍💻 Developer",
 "🍕 Pizza Delivery",
 "🛠 Mechanic",
-"🎨 Designer"
+"🎨 Designer",
+"🚓 Police",
+"🏦 Banker"
 ];
 
 createUser(interaction.user.id);
@@ -297,7 +309,9 @@ if (success) {
 const amount =
 Math.floor(Math.random() * 1000) + 100;
 
-if (economy[target.id].coins < amount) {
+if (
+economy[target.id].coins < amount
+) {
 
 return interaction.reply(
 "❌ User does not have enough coins"
@@ -331,12 +345,13 @@ return interaction.reply(
 
 if (interaction.commandName === "shop") {
 
-let text = "🛒 BloxDen Shop\n\n";
+let text =
+"🛒 BloxDen Shop\n\n";
 
 for (const item in shopItems) {
 
 text +=
-`${shopItems[item].name} — ${shopItems[item].price} coins\n`;
+`${shopItems[item].name} — ${shopItems[item].price} Coins\n`;
 
 }
 
@@ -369,7 +384,7 @@ economy[interaction.user.id].coins
 ) {
 
 return interaction.reply(
-"❌ Not enough coins"
+"❌ You don't have enough coins"
 );
 
 }
@@ -377,7 +392,9 @@ return interaction.reply(
 economy[interaction.user.id].coins -=
 shopItems[item].price;
 
-economy[interaction.user.id].inventory.push(
+economy[
+interaction.user.id
+].inventory.push(
 shopItems[item].name
 );
 
@@ -401,7 +418,7 @@ const inventory =
 economy[interaction.user.id].inventory;
 
 return interaction.reply(
-`🎒 Inventory:\n${inventory.join("\n") || "Empty"}`
+`🎒 Inventory\n\n${inventory.join("\n") || "Empty"}`
 );
 
 }
@@ -415,12 +432,16 @@ if (interaction.commandName === "profile") {
 createUser(interaction.user.id);
 
 return interaction.reply(
-`👤 Profile of ${interaction.user.username}
+`👤 ${interaction.user.username}'s Profile
 
 💰 Coins: ${economy[interaction.user.id].coins}
+
 💼 Job: ${economy[interaction.user.id].job}
+
 🔥 Daily Streak: ${economy[interaction.user.id].streak}
-🎒 Inventory Items: ${economy[interaction.user.id].inventory.length}`
+
+🎒 Inventory Items:
+${economy[interaction.user.id].inventory.length}`
 );
 
 }
