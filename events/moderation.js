@@ -1,4 +1,5 @@
 const fs = require("fs");
+
 const {
 PermissionsBitField
 } = require("discord.js");
@@ -20,12 +21,6 @@ fs.readFileSync("warns.json")
 }
 
 /* ========================= */
-/* SNIPE DATABASE */
-/* ========================= */
-
-const snipes = new Map();
-
-/* ========================= */
 /* SAVE WARNS */
 /* ========================= */
 
@@ -39,8 +34,10 @@ JSON.stringify(warns, null, 2)
 }
 
 /* ========================= */
-/* MESSAGE DELETE */
+/* SNIPE */
 /* ========================= */
+
+const snipes = new Map();
 
 client.on("messageDelete", async message => {
 
