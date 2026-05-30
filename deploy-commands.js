@@ -498,7 +498,23 @@ option
 .setDescription("Suggestion")
 .setRequired(true)
 )
+/* ========================= */
+/* REPUTATION */
+/* ========================= */
 
+new SlashCommandBuilder()
+.setName("rep")
+.setDescription("Give reputation to a user")
+.addUserOption(option =>
+option
+.setName("user")
+.setDescription("User to give reputation to")
+.setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("repleaderboard")
+.setDescription("View reputation leaderboard"),
 ].map(command => command.toJSON());
 
 /* ========================= */
