@@ -497,7 +497,7 @@ option
 .setName("suggestion")
 .setDescription("Suggestion")
 .setRequired(true)
-)
+), 
 /* ========================= */
 /* REPUTATION */
 /* ========================= */
@@ -515,6 +515,7 @@ option
 new SlashCommandBuilder()
 .setName("repleaderboard")
 .setDescription("View reputation leaderboard"),
+  
 ].map(command => command.toJSON());
 
 /* ========================= */
