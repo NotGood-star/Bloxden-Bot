@@ -9,21 +9,7 @@ Partials
 } = require("discord.js");
 
 /* ========================= */
-/* EXPRESS SERVER */
-/* ========================= */
-
-const app = express();
-
-app.get("/", (req, res) => {
-res.send("✅ BloxDen Bot is Running");
-});
-
-app.listen(3000, () => {
-console.log("🌐 Web server running on port 3000");
-});
-
-/* ========================= */
-/* DISCORD CLIENT */
+/* CLIENT */
 /* ========================= */
 
 const client = new Client({
@@ -49,7 +35,21 @@ Partials.Reaction
 });
 
 /* ========================= */
-/* BOT READY */
+/* EXPRESS SERVER */
+/* ========================= */
+
+const app = express();
+
+app.get("/", (req, res) => {
+res.send("✅ BloxDen Bot Online");
+});
+
+app.listen(3000, () => {
+console.log("🌐 Web Server Running");
+});
+
+/* ========================= */
+/* READY */
 /* ========================= */
 
 client.once("clientReady", () => {
@@ -61,7 +61,7 @@ console.log(
 });
 
 /* ========================= */
-/* LOAD EVENT FILES */
+/* LOAD EVENTS */
 /* ========================= */
 
 require("./events/economy")(client);
@@ -78,6 +78,8 @@ require("./events/welcome")(client);
 
 require("./events/automod")(client);
 
+require("./events/reputation")(client);
+
 require("./events/fun")(client);
 
 require("./events/utility")(client);
@@ -88,15 +90,19 @@ require("./events/utility")(client);
 
 process.on("unhandledRejection", err => {
 
-console.log("❌ Unhandled Rejection");
-console.error(err);
+console.error(
+"❌ Unhandled Rejection:",
+err
+);
 
 });
 
 process.on("uncaughtException", err => {
 
-console.log("❌ Uncaught Exception");
-console.error(err);
+console.error(
+"❌ Uncaught Exception:",
+err
+);
 
 });
 
