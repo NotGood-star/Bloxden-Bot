@@ -84,12 +84,21 @@ option
 .setRequired(true)
 .addChoices(
 { name: "💼 Businessman", value: "businessman" },
+{ name: "💼 Businessman", value: "businessman" },
 { name: "💻 Hacker", value: "hacker" },
 { name: "👨‍💻 Developer", value: "developer" },
+{ name: "🗳️ Politician", value: "politician" },
+{ name: "🚀 Astronaut", value: "astronaut" },
+{ name: "🚗 Driver", value: "driver" },
 { name: "🏦 Bank Manager", value: "bankmanager" },
-{ name: "🗳️ Politician", value: "politician" }
-)
-),
+{ name: "🪄 Magician", value: "magician" },
+{ name: "⚔️ Fighter", value: "fighter" },
+{ name: "⚽ Footballer", value: "footballer" },
+{ name: "🎼 Musician", value: "musician" },
+{ name: "🎰 Gambler", value: "gambler" },
+{ name: "🎮 Gamer", value: "gamer" },
+{ name: "🕵️ Detective", value: "detective" },
+{ name: "🎥 Director", value: "director" }
 
 new SlashCommandBuilder()
 .setName("work")
