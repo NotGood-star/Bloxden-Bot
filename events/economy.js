@@ -49,36 +49,41 @@ price: 50000
 
 };
 
-/* ========================= */
-/* JOBS */
-/* ========================= */
+/* ========================= /
+/ JOBS /
+/ ========================= */
 
 const jobs = {
 
-businessman: {
-name: "💼 Businessman",
-salary: 800
-},
+businessman: { name: "💼 Businessman", min: 500, max: 1500 },
 
-hacker: {
-name: "💻 Hacker",
-salary: 1200
-},
+hacker: { name: "💻 Hacker", min: 800, max: 2200 },
 
-developer: {
-name: "👨‍💻 Developer",
-salary: 1500
-},
+developer: { name: "👨‍💻 Developer", min: 700, max: 2000 },
 
-bankmanager: {
-name: "🏦 Bank Manager",
-salary: 2000
-},
+politician: { name: "🗳️ Politician", min: 1000, max: 3000 },
 
-politician: {
-name: "🗳️ Politician",
-salary: 2500
-}
+astronaut: { name: "🚀 Astronaut", min: 2500, max: 5000 },
+
+driver: { name: "🚗 Driver", min: 300, max: 900 },
+
+bankmanager: { name: "🏦 Bank Manager", min: 1500, max: 3500 },
+
+magician: { name: "🪄 Magician", min: 500, max: 1800 },
+
+fighter: { name: "⚔️ Fighter", min: 700, max: 2500 },
+
+footballer: { name: "⚽ Footballer", min: 1200, max: 4000 },
+
+musician: { name: "🎼 Musician", min: 500, max: 2000 },
+
+gambler: { name: "🎰 Gambler", min: 0, max: 5000 },
+
+gamer: { name: "🎮 Gamer", min: 400, max: 1800 },
+
+detective: { name: "🕵️ Detective", min: 800, max: 2500 },
+
+director: { name: "🎥 Director", min: 1500, max: 4500 }
 
 };
 
