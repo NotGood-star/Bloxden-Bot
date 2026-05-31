@@ -84,7 +84,6 @@ option
 .setRequired(true)
 .addChoices(
 { name: "💼 Businessman", value: "businessman" },
-{ name: "💼 Businessman", value: "businessman" },
 { name: "💻 Hacker", value: "hacker" },
 { name: "👨‍💻 Developer", value: "developer" },
 { name: "🗳️ Politician", value: "politician" },
@@ -99,6 +98,8 @@ option
 { name: "🎮 Gamer", value: "gamer" },
 { name: "🕵️ Detective", value: "detective" },
 { name: "🎥 Director", value: "director" }
+)
+),
 
 new SlashCommandBuilder()
 .setName("work")
@@ -148,6 +149,9 @@ option
 { name: "👑 King Role", value: "king" },
 { name: "🚀 Boost Role", value: "boost" },
 { name: "🌟 Legend Role", value: "legend" }
+{ name: "🔥 Mythic Role", value: "mythic" },
+{ name: "💠 Elite Role", value: "elite" },
+{ name: "🏆 BloxDen God", value: "bloxdengod" },
 )
 ),
 
