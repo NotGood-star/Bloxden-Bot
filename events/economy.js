@@ -526,11 +526,14 @@ if (interaction.commandName === "shop") {
 return interaction.reply(
 `🛒 BloxDen Shop
 
-💎 VIP Role — 5000 🪙
-🛒 Merchant Role — 10000 🪙
-👑 King Role — 25000 🪙
-🚀 Boost Role — 30000 🪙
-🌟 Legend Role — 50000 🪙`
+💎 VIP Role — 5,000 🪙
+🛒 Merchant Role — 10,000 🪙
+👑 King Role — 25,000 🪙
+🚀 Boost Role — 30,000 🪙
+🌟 Legend Role — 50,000 🪙
+🔥 Mythic Role — 100,000 🪙
+💠 Elite Role — 250,000 🪙
+🏆 BloxDen God — 1,000,000 🪙`
 );
 
 }
