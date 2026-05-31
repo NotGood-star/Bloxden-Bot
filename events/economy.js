@@ -45,6 +45,21 @@ price: 30000
 legend: {
 name: "🌟 Legend Role",
 price: 50000
+},
+
+mythic: {
+name: "🔥 Mythic Role",
+price: 100000
+},
+
+elite: {
+name: "💠 Elite Role",
+price: 250000
+},
+
+bloxdengod: {
+name: "🏆 BloxDen God",
+price: 1000000
 }
 
 };
