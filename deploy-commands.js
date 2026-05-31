@@ -148,10 +148,10 @@ option
 { name: "🛒 Merchant Role", value: "merchant" },
 { name: "👑 King Role", value: "king" },
 { name: "🚀 Boost Role", value: "boost" },
-{ name: "🌟 Legend Role", value: "legend" }
+{ name: "🌟 Legend Role", value: "legend" },
 { name: "🔥 Mythic Role", value: "mythic" },
 { name: "💠 Elite Role", value: "elite" },
-{ name: "🏆 BloxDen God", value: "bloxdengod" },
+{ name: "🏆 BloxDen God", value: "bloxdengod" }
 )
 ),
 
