@@ -374,7 +374,10 @@ ephemeral: true
 }
 
 const salary =
-jobs[user.job].salary;
+Math.floor(
+Math.random() *
+(jobs[user.job].max - jobs[user.job].min + 1)
+) + jobs[user.job].min;
 
 user.coins += salary;
 
