@@ -120,11 +120,11 @@ JSON.stringify(economy, null, 2)
 /* ========================= */
 
 function createUser(id) {
+function createUser(id) {
 
 if (!economy[id]) {
 
 economy[id] = {
-
 coins: 0,
 job: null,
 inventory: [],
@@ -134,8 +134,16 @@ lastWork: 0,
 lastBeg: 0,
 lastCrime: 0,
 lastRob: 0
-
 };
+
+} else {
+
+economy[id].lastBeg ??= 0;
+economy[id].lastCrime ??= 0;
+economy[id].lastRob ??= 0;
+economy[id].lastWork ??= 0;
+economy[id].lastDaily ??= 0;
+
 }
 
 }
