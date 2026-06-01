@@ -1,4 +1,7 @@
 const fs = require("fs");
+const {
+  EmbedBuilder
+} = require("discord.js");
 
 module.exports = (client) => {
 
@@ -114,7 +117,32 @@ JSON.stringify(economy, null, 2)
 );
 
 }
+function formatCoins(amount) {
+  return Number(amount).toLocaleString("en-US");
+}
 
+function createEmbed(
+interaction,
+title,
+description,
+color = "#5865F2"
+) {
+  return new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({
+      name: `${interaction.user.username} • BloxDen Economy`,
+      iconURL: interaction.user.displayAvatarURL()
+    })
+    .setDescription(description)
+    .setTitle(title)
+    .setThumbnail(
+      interaction.user.displayAvatarURL()
+    )
+    .setFooter({
+      text: "BloxDen Economy System"
+    })
+    .setTimestamp();
+}
 /* ========================= */
 /* CREATE USER */
 /* ========================= */
@@ -169,9 +197,23 @@ interaction.user;
 
 createUser(user.id);
 
-return interaction.reply(
-`🪙 ${user.username} has **${economy[user.id].coins}** coins`
+const embed = createEmbed(
+interaction,
+"💰 Balance",
+`### 🪙 Wallet
+
+**${user.username}**
+has
+
+💵 **${formatCoins(
+economy[user.id].coins
+)} Coins**`,
+"#FFD700"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -210,12 +252,20 @@ user.dailyStreak++;
 
 saveData();
 
-return interaction.reply(
-`🎁 You received 1000 🪙
+const embed = createEmbed(
+interaction,
+"🎁 Daily Reward",
+`💰 Received:
+**1,000 🪙**
 
 🔥 Daily Streak:
-${user.dailyStreak}`
+**${user.dailyStreak}**`,
+"#57F287"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -275,9 +325,19 @@ interaction.user.id
 
 saveData();
 
-return interaction.reply(
-`🙏 Someone gave you **${amount} 🪙**`
+const embed = createEmbed(
+interaction,
+"🙏 Beg",
+`A stranger felt generous.
+
+💰 Received:
+**${formatCoins(amount)} 🪙**`,
+"#57F287"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -322,12 +382,19 @@ interaction.user.id
 
 saveData();
 
-return interaction.reply(
-`🚔 Crime successful
+const embed = createEmbed(
+interaction,
+"🙏 Beg",
+`A stranger felt generous.
 
-💰 Earned:
-${amount} 🪙`
+💰 Received:
+**${formatCoins(amount)} 🪙**`,
+"#57F287"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 } else {
 
@@ -340,12 +407,17 @@ interaction.user.id
 
 saveData();
 
-return interaction.reply(
-`❌ You got caught
-
-💸 Lost:
-${amount} 🪙`
+const embed = createEmbed(
+interaction,
+"🚓 Arrested",
+`💸 Fine:
+**${formatCoins(amount)} 🪙**`,
+"#ED4245"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
