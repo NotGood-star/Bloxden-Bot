@@ -419,32 +419,42 @@ if (interaction.commandName === "crime") {
 /* ========================= */
 
 if (
-interaction.commandName ===
-"workapply"
-) {
+if (interaction.commandName === "workapply") {
 
-const job =
-interaction.options.getString("job");
+  const job =
+    interaction.options.getString("job");
 
-createUser(interaction.user.id);
+  createUser(interaction.user.id);
 
-if (!jobs[job]) {
+  if (!jobs[job]) {
 
-return interaction.reply(
-"❌ Invalid job"
-);
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Job",
+          "That job does not exist.",
+          "#ED4245"
+        )
+      ]
+    });
 
-}
+  }
 
-economy[
-interaction.user.id
-].job = job;
+  economy[interaction.user.id].job = job;
 
-saveData();
+  saveData();
 
-return interaction.reply(
-`💼 You are now working as ${jobs[job].name}`
-);
+  return interaction.reply({
+    embeds: [
+      createEmbed(
+        interaction,
+        "💼 Job Applied",
+        `You are now working as\n**${jobs[job].name}**`,
+        "#57F287"
+      )
+    ]
+  });
 
 }
 
@@ -563,63 +573,109 @@ if (interaction.commandName === "rob") {
   economy[interaction.user.id].lastRob = Date.now();
 
   if (success) {
-    const amount = Math.floor(Math.random() * 1000) + 200;
 
-    economy[interaction.user.id].coins += amount;
-    economy[target.id].coins -= amount;
+  const amount =
+    Math.floor(Math.random() * 1000) + 200;
 
-    saveData();
+  economy[interaction.user.id].coins +=
+    amount;
 
-    return interaction.reply(
-      `🔫 You robbed ${target.username}\n\n💰 Stole: ${amount} 🪙`
-    );
-  }
+  economy[target.id].coins -= amount;
 
   saveData();
 
-  return interaction.reply("🚔 Rob failed");
+  const embed = createEmbed(
+    interaction,
+    "🔫 Rob Successful",
+    `Victim: **${target.username}**\n\n💰 Stolen: **${formatCoins(amount)} 🪙**`,
+    "#57F287"
+  );
+
+  return interaction.reply({
+    embeds: [embed]
+  });
+
 }
+
+saveData();
+
+const embed = createEmbed(
+  interaction,
+  "🚔 Rob Failed",
+  "The victim escaped and called the police.",
+  "#ED4245"
+);
+
+return interaction.reply({
+  embeds: [embed]
+});
 
 /* ========================= */
 /* PAY */
 /* ========================= */
 
 if (interaction.commandName === "pay") {
+if (interaction.commandName === "pay") {
 
-const target =
-interaction.options.getUser("user");
+  const target =
+    interaction.options.getUser("user");
 
-const amount =
-interaction.options.getInteger("amount");
+  const amount =
+    interaction.options.getInteger("amount");
 
-createUser(interaction.user.id);
-createUser(target.id);
+  createUser(interaction.user.id);
+  createUser(target.id);
 
-if (
-economy[
-interaction.user.id
-].coins < amount
-) {
+  if (amount <= 0) {
 
-return interaction.reply(
-"❌ Not enough coins"
-);
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Amount",
+          "Amount must be greater than 0.",
+          "#ED4245"
+        )
+      ]
+    });
 
-}
+  }
 
-economy[
-interaction.user.id
-].coins -= amount;
+  if (
+    economy[interaction.user.id].coins <
+    amount
+  ) {
 
-economy[
-target.id
-].coins += amount;
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Not Enough Coins",
+          "You don't have enough coins.",
+          "#ED4245"
+        )
+      ]
+    });
 
-saveData();
+  }
 
-return interaction.reply(
-`💸 Sent ${amount} 🪙 to ${target}`
-);
+  economy[interaction.user.id].coins -=
+    amount;
+
+  economy[target.id].coins += amount;
+
+  saveData();
+
+  const embed = createEmbed(
+    interaction,
+    "💸 Payment Sent",
+    `Recipient: **${target.username}**\n\nAmount: **${formatCoins(amount)} 🪙**`,
+    "#57F287"
+  );
+
+  return interaction.reply({
+    embeds: [embed]
+  });
 
 }
 
@@ -892,60 +948,113 @@ interaction.options.getInteger("bet");
 
 createUser(interaction.user.id);
 
+if (bet <= 0) {
+
+return interaction.reply({
+  embeds: [
+    createEmbed(
+      interaction,
+      "❌ Invalid Bet",
+      "Bet amount must be greater than 0.",
+      "#ED4245"
+    )
+  ]
+});
+
+}
+
 if (
-economy[
-interaction.user.id
-].coins < bet
+economy[interaction.user.id].coins < bet
 ) {
 
-return interaction.reply(
-"❌ Not enough coins"
-);
+return interaction.reply({
+  embeds: [
+    createEmbed(
+      interaction,
+      "❌ Not Enough Coins",
+      `You need **${formatCoins(bet)} 🪙** to play Blackjack.`,
+      "#ED4245"
+    )
+  ]
+});
 
 }
 
 const player =
 Math.floor(Math.random() * 11) + 10;
 
-const bot =
+const dealer =
 Math.floor(Math.random() * 11) + 10;
 
-if (
-player > bot &&
-player <= 21
-) {
+const win =
+player > dealer && player <= 21;
 
-economy[
-interaction.user.id
-].coins += bet;
+if (win) {
 
-saveData();
-
-return interaction.reply(
-`🃏 Your Total: ${player}
-
-🤖 Bot Total: ${bot}
-
-🎉 You won ${bet} 🪙`
-);
+economy[interaction.user.id].coins += bet;
 
 } else {
 
-economy[
-interaction.user.id
-].coins -= bet;
+economy[interaction.user.id].coins -= bet;
+
+}
 
 saveData();
 
-return interaction.reply(
-`🃏 Your Total: ${player}
-
-🤖 Bot Total: ${bot}
-
-💀 You lost ${bet} 🪙`
-);
-
+const embed = new EmbedBuilder()
+.setColor(
+win ? "#57F287" : "#ED4245"
+)
+.setAuthor({
+name: "${interaction.user.username} • Blackjack",
+iconURL:
+interaction.user.displayAvatarURL()
+})
+.setTitle(
+win
+? "🃏 Blackjack Victory"
+: "💀 Blackjack Defeat"
+)
+.setThumbnail(
+interaction.user.displayAvatarURL()
+)
+.addFields(
+{
+name: "🧑 Your Hand",
+value: "**${player}**",
+inline: true
+},
+{
+name: "🤖 Dealer Hand",
+value: "**${dealer}**",
+inline: true
+},
+{
+name: "🎲 Bet Amount",
+value: "**${formatCoins(bet)} 🪙**",
+inline: true
+},
+{
+name: win
+? "🎉 Profit"
+: "💸 Loss",
+value: "**${formatCoins(bet)} 🪙**",
+inline: false
+},
+{
+name: "💰 New Balance",
+value: "**${formatCoins( economy[interaction.user.id].coins )} 🪙**",
+inline: false
 }
+)
+.setFooter({
+text: "BloxDen Economy • Blackjack"
+})
+.setTimestamp();
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -977,55 +1086,38 @@ Math.random() < 0.4;
 
 if (win) {
 
-const reward =
-bet * 2;
+  const reward = bet * 2;
 
-economy[
-interaction.user.id
-].coins += reward;
+  economy[interaction.user.id].coins += reward;
 
-saveData();
+  saveData();
 
-return interaction.reply(
-`💣 You survived the mines!
+  const embed = createEmbed(
+    interaction,
+    "💣 Mines Victory",
+    `🎉 Won **${formatCoins(reward)} 🪙**`,
+    "#57F287"
+  );
 
-🎉 Won ${reward} 🪙`
-);
+  return interaction.reply({
+    embeds: [embed]
+  });
 
 } else {
 
-economy[
-interaction.user.id
-].coins -= bet;
+  economy[interaction.user.id].coins -= bet;
 
-saveData();
+  saveData();
 
-return interaction.reply(
-`💥 BOOM!
+  const embed = createEmbed(
+    interaction,
+    "💥 BOOM!",
+    `❌ Lost **${formatCoins(bet)} 🪙**`,
+    "#ED4245"
+  );
 
-❌ Lost ${bet} 🪙`
-);
-
-}
-
-}
-
-} catch (err) {
-
-console.error(err);
-
-if (!interaction.replied) {
-
-interaction.reply({
-content:
-"❌ Economy Error",
-ephemeral: true
-});
+  return interaction.reply({
+    embeds: [embed]
+  });
 
 }
-
-}
-
-});
-
-};
