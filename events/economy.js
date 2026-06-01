@@ -347,82 +347,70 @@ embeds: [embed]
 
 if (interaction.commandName === "crime") {
 
-createUser(interaction.user.id);
+  createUser(interaction.user.id);
 
-const cooldown = 5 * 60 * 1000; // 5 minutes
+  const cooldown = 5 * 60 * 1000;
 
-if (
-Date.now() -
-economy[interaction.user.id].lastCrime <
-cooldown
-) {
+  if (
+    Date.now() -
+      economy[interaction.user.id].lastCrime <
+    cooldown
+  ) {
+    return interaction.reply({
+      content:
+        "⏳ You must wait 5 minutes before committing another crime.",
+      ephemeral: true
+    });
+  }
 
-return interaction.reply({
-content:
-"⏳ You must wait 5 minutes before committing another crime.",
-ephemeral: true
-});
+  economy[interaction.user.id].lastCrime =
+    Date.now();
 
-}
+  const success = Math.random() < 0.5;
 
-economy[interaction.user.id].lastCrime =
-Date.now();
+  if (success) {
 
-const success =
-Math.random() < 0.5;
+    const amount =
+      Math.floor(Math.random() * 2000) + 500;
 
-if (success) {
+    economy[interaction.user.id].coins +=
+      amount;
 
-const amount =
-Math.floor(Math.random() * 2000) + 500;
+    saveData();
 
-economy[
-interaction.user.id
-].coins += amount;
+    const embed = createEmbed(
+      interaction,
+      "🚔 Crime Successful",
+      `💰 Earned:\n**${formatCoins(amount)} 🪙**`,
+      "#57F287"
+    );
 
-saveData();
+    return interaction.reply({
+      embeds: [embed]
+    });
 
-const embed = createEmbed(
-interaction,
-"🚔 Crime Successful",
-`💰 Earned:
-**${formatCoins(amount)} 🪙**`,
-"#57F287"
-);
+  } else {
 
-💰 Received:
-**${formatCoins(amount)} 🪙**`,
-"#57F287"
-);
+    const amount =
+      Math.floor(Math.random() * 1000) + 200;
 
-return interaction.reply({
-embeds: [embed]
-});
+    economy[interaction.user.id].coins -=
+      amount;
 
-} else {
+    saveData();
 
-const amount =
-Math.floor(Math.random() * 1000) + 200;
+    const embed = createEmbed(
+      interaction,
+      "🚓 Arrested",
+      `💸 Fine:\n**${formatCoins(amount)} 🪙**`,
+      "#ED4245"
+    );
 
-economy[
-interaction.user.id
-].coins -= amount;
+    return interaction.reply({
+      embeds: [embed]
+    });
 
-saveData();
-
-const embed = createEmbed(
-interaction,
-"🚓 Arrested",
-`💸 Fine:
-**${formatCoins(amount)} 🪙**`,
-"#ED4245"
-);
-
-return interaction.reply({
-embeds: [embed]
-});
-
-}
+  }
 
 }
 
