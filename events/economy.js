@@ -130,10 +130,12 @@ job: null,
 inventory: [],
 lastDaily: 0,
 dailyStreak: 0,
-lastWork: 0
+lastWork: 0,
+lastBeg: 0,
+lastCrime: 0,
+lastRob: 0
 
 };
-
 }
 
 }
@@ -237,6 +239,25 @@ interaction.user.id
 if (interaction.commandName === "beg") {
 
 createUser(interaction.user.id);
+
+const cooldown = 10 * 60 * 1000; // 10 minutes
+
+if (
+Date.now() -
+economy[interaction.user.id].lastBeg <
+cooldown
+) {
+
+return interaction.reply({
+content:
+"⏳ You must wait 10 minutes before begging again.",
+ephemeral: true
+});
+
+}
+
+economy[interaction.user.id].lastBeg =
+Date.now();
 
 const amount =
 Math.floor(Math.random() * 500) + 100;
