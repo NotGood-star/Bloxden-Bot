@@ -418,7 +418,6 @@ if (interaction.commandName === "crime") {
 /* WORK APPLY */
 /* ========================= */
 
-if (
 if (interaction.commandName === "workapply") {
 
   const job =
@@ -614,7 +613,6 @@ return interaction.reply({
 /* PAY */
 /* ========================= */
 
-if (interaction.commandName === "pay") {
 if (interaction.commandName === "pay") {
 
   const target =
