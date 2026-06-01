@@ -943,118 +943,123 @@ embeds: [embed]
 
 if (interaction.commandName === "blackjack") {
 
-const bet =
-interaction.options.getInteger("bet");
+  const bet =
+    interaction.options.getInteger("bet");
 
-createUser(interaction.user.id);
+  createUser(interaction.user.id);
 
-if (bet <= 0) {
+  if (!bet || bet <= 0) {
 
-return interaction.reply({
-  embeds: [
-    createEmbed(
-      interaction,
-      "❌ Invalid Bet",
-      "Bet amount must be greater than 0.",
-      "#ED4245"
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Bet",
+          "Bet amount must be greater than 0.",
+          "#ED4245"
+        )
+      ]
+    });
+
+  }
+
+  if (
+    economy[interaction.user.id].coins < bet
+  ) {
+
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Not Enough Coins",
+          `You need **${formatCoins(bet)} 🪙** to play Blackjack.`,
+          "#ED4245"
+        )
+      ]
+    });
+
+  }
+
+  const player =
+    Math.floor(Math.random() * 11) + 10;
+
+  const dealer =
+    Math.floor(Math.random() * 11) + 10;
+
+  const win =
+    player > dealer &&
+    player <= 21;
+
+  if (win) {
+
+    economy[interaction.user.id].coins += bet;
+
+  } else {
+
+    economy[interaction.user.id].coins -= bet;
+
+  }
+
+  saveData();
+
+  const embed = new EmbedBuilder()
+    .setColor(
+      win
+        ? "#57F287"
+        : "#ED4245"
     )
-  ]
-});
-
-}
-
-if (
-economy[interaction.user.id].coins < bet
-) {
-
-return interaction.reply({
-  embeds: [
-    createEmbed(
-      interaction,
-      "❌ Not Enough Coins",
-      `You need **${formatCoins(bet)} 🪙** to play Blackjack.`,
-      "#ED4245"
+    .setAuthor({
+      name: `${interaction.user.username} • Blackjack`,
+      iconURL:
+        interaction.user.displayAvatarURL()
+    })
+    .setTitle(
+      win
+        ? "🃏 Blackjack Victory"
+        : "💀 Blackjack Defeat"
     )
-  ]
-});
+    .setThumbnail(
+      interaction.user.displayAvatarURL()
+    )
+    .addFields(
+      {
+        name: "🧑 Your Hand",
+        value: `${player}`,
+        inline: true
+      },
+      {
+        name: "🤖 Dealer Hand",
+        value: `${dealer}`,
+        inline: true
+      },
+      {
+        name: "🎲 Bet Amount",
+        value: `${formatCoins(bet)} 🪙`,
+        inline: true
+      },
+      {
+        name: win
+          ? "🎉 Profit"
+          : "💸 Loss",
+        value: `${formatCoins(bet)} 🪙`,
+        inline: false
+      },
+      {
+        name: "💰 New Balance",
+        value: `${formatCoins(
+          economy[interaction.user.id].coins
+        )} 🪙`,
+        inline: false
+      }
+    )
+    .setFooter({
+      text: "BloxDen Economy • Blackjack"
+    })
+    .setTimestamp();
 
-}
-
-const player =
-Math.floor(Math.random() * 11) + 10;
-
-const dealer =
-Math.floor(Math.random() * 11) + 10;
-
-const win =
-player > dealer && player <= 21;
-
-if (win) {
-
-economy[interaction.user.id].coins += bet;
-
-} else {
-
-economy[interaction.user.id].coins -= bet;
-
-}
-
-saveData();
-
-const embed = new EmbedBuilder()
-.setColor(
-win ? "#57F287" : "#ED4245"
-)
-.setAuthor({
-name: "${interaction.user.username} • Blackjack",
-iconURL:
-interaction.user.displayAvatarURL()
-})
-.setTitle(
-win
-? "🃏 Blackjack Victory"
-: "💀 Blackjack Defeat"
-)
-.setThumbnail(
-interaction.user.displayAvatarURL()
-)
-.addFields(
-{
-name: "🧑 Your Hand",
-value: "**${player}**",
-inline: true
-},
-{
-name: "🤖 Dealer Hand",
-value: "**${dealer}**",
-inline: true
-},
-{
-name: "🎲 Bet Amount",
-value: "**${formatCoins(bet)} 🪙**",
-inline: true
-},
-{
-name: win
-? "🎉 Profit"
-: "💸 Loss",
-value: "**${formatCoins(bet)} 🪙**",
-inline: false
-},
-{
-name: "💰 New Balance",
-value: "**${formatCoins( economy[interaction.user.id].coins )} 🪙**",
-inline: false
-}
-)
-.setFooter({
-text: "BloxDen Economy • Blackjack"
-})
-.setTimestamp();
-
-return interaction.reply({
-embeds: [embed]
-});
+  return interaction.reply({
+    embeds: [embed]
+  });
 
 }
 
