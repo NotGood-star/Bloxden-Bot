@@ -120,7 +120,6 @@ JSON.stringify(economy, null, 2)
 /* ========================= */
 
 function createUser(id) {
-function createUser(id) {
 
 if (!economy[id]) {
 
@@ -469,7 +468,7 @@ const cooldown = 30 * 60 * 1000; // 30 minutes
 
 if (
 Date.now() -
-economy[interaction.user.id].lastRob <
+economy[interaction.user.id].lastRob = Date.now();
 cooldown
 ) {
 
