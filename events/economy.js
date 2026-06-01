@@ -462,75 +462,51 @@ ${salary} 🪙`
 
 if (interaction.commandName === "rob") {
 
-createUser(interaction.user.id);
+  createUser(interaction.user.id);
 
-const cooldown = 30 * 60 * 1000; // 30 minutes
+  const cooldown = 30 * 60 * 1000; // 30 minutes
 
-if (
-Date.now() -
-economy[interaction.user.id].lastRob = Date.now();
-cooldown
-) {
+  const lastRob = economy[interaction.user.id].lastRob || 0;
 
-return interaction.reply({
-content:
-"⏳ You must wait 30 minutes before robbing again.",
-ephemeral: true
-});
+  if (Date.now() - lastRob < cooldown) {
+    return interaction.reply({
+      content: "⏳ You must wait 30 minutes before robbing again.",
+      ephemeral: true
+    });
+  }
 
-}
+  const target = interaction.options.getUser("user");
 
-economy[interaction.user.id].lastRob =
-Date.now();
+  if (target.id === interaction.user.id) {
+    return interaction.reply("❌ You can't rob yourself");
+  }
 
-const target =
-interaction.options.getUser("user");
+  createUser(target.id);
 
-if (target.id === interaction.user.id) {
+  if (economy[target.id].coins < 500) {
+    return interaction.reply("❌ User has low coins");
+  }
 
-return interaction.reply(
-"❌ You can't rob yourself"
-);
+  const success = Math.random() < 0.5;
 
-}
+  economy[interaction.user.id].lastRob = Date.now();
 
-createUser(target.id);
+  if (success) {
+    const amount = Math.floor(Math.random() * 1000) + 200;
 
-if (
-economy[target.id].coins < 500
-) {
+    economy[interaction.user.id].coins += amount;
+    economy[target.id].coins -= amount;
 
-return interaction.reply(
-"❌ User has low coins"
-);
+    saveData();
 
-}
+    return interaction.reply(
+      `🔫 You robbed ${target.username}\n\n💰 Stole: ${amount} 🪙`
+    );
+  }
 
-const success =
-Math.random() < 0.5;
+  saveData();
 
-if (success) {
-
-const amount =
-Math.floor(Math.random() * 1000) + 200;
-
-economy[interaction.user.id].coins += amount;
-economy[target.id].coins -= amount;
-
-saveData();
-
-return interaction.reply(
-`🔫 You robbed ${target}
-
-💰 Stole: ${amount} 🪙`
-);
-
-}
-
-return interaction.reply(
-"🚔 Rob failed"
-);
-
+  return interaction.reply("🚔 Rob failed");
 }
 
 /* ========================= */
