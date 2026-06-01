@@ -455,6 +455,27 @@ ${salary} 🪙`
 
 if (interaction.commandName === "rob") {
 
+createUser(interaction.user.id);
+
+const cooldown = 30 * 60 * 1000; // 30 minutes
+
+if (
+Date.now() -
+economy[interaction.user.id].lastRob <
+cooldown
+) {
+
+return interaction.reply({
+content:
+"⏳ You must wait 30 minutes before robbing again.",
+ephemeral: true
+});
+
+}
+
+economy[interaction.user.id].lastRob =
+Date.now();
+
 const target =
 interaction.options.getUser("user");
 
@@ -466,7 +487,6 @@ return interaction.reply(
 
 }
 
-createUser(interaction.user.id);
 createUser(target.id);
 
 if (
@@ -487,30 +507,22 @@ if (success) {
 const amount =
 Math.floor(Math.random() * 1000) + 200;
 
-economy[
-interaction.user.id
-].coins += amount;
-
-economy[
-target.id
-].coins -= amount;
+economy[interaction.user.id].coins += amount;
+economy[target.id].coins -= amount;
 
 saveData();
 
 return interaction.reply(
 `🔫 You robbed ${target}
 
-💰 Stole:
-${amount} 🪙`
+💰 Stole: ${amount} 🪙`
 );
 
-} else {
+}
 
 return interaction.reply(
 "🚔 Rob failed"
 );
-
-}
 
 }
 
