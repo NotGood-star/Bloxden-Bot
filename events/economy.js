@@ -384,8 +384,11 @@ saveData();
 
 const embed = createEmbed(
 interaction,
-"🙏 Beg",
-`A stranger felt generous.
+"🚔 Crime Successful",
+`💰 Earned:
+**${formatCoins(amount)} 🪙**`,
+"#57F287"
+);
 
 💰 Received:
 **${formatCoins(amount)} 🪙**`,
@@ -519,12 +522,20 @@ user.lastWork = Date.now();
 
 saveData();
 
-return interaction.reply(
-`💼 You worked as ${jobs[user.job].name}
+const embed = createEmbed(
+interaction,
+"💼 Work Complete",
+`🏢 Job:
+**${jobs[user.job].name}**
 
 💰 Earned:
-${salary} 🪙`
+**${formatCoins(salary)} 🪙**`,
+"#57F287"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -735,18 +746,37 @@ interaction.user.id
 
 saveData();
 
-return interaction.reply(
-`🛒 Purchased ${data.name}
+const embed = createEmbed(
+interaction,
+"🛒 Purchase Successful",
+`📦 Item:
+**${data.name}**
 
-💸 Spent:
-${data.price} 🪙`
+💸 Cost:
+**${formatCoins(data.price)} 🪙**`,
+"#57F287"
 );
+
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
 /* ========================= */
 /* INVENTORY */
 /* ========================= */
+
+if (interaction.commandName === "inventory") {
+
+const user =
+interaction.options.getUser("user") ||
+interaction.user;
+
+createUser(user.id);
+
+const inventory =
+economy[user.id].inventory;
 
 const embed = new EmbedBuilder()
 .setColor("#FEE75C")
@@ -774,11 +804,12 @@ return interaction.reply({
 embeds: [embed]
 });
 
+}
+
 /* ========================= */
 /* PROFILE */
 /* ========================= */
 
-if (interaction.commandName === "profile") {
 if (interaction.commandName === "profile") {
 
 const user =
