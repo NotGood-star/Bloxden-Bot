@@ -282,6 +282,25 @@ if (interaction.commandName === "crime") {
 
 createUser(interaction.user.id);
 
+const cooldown = 5 * 60 * 1000; // 5 minutes
+
+if (
+Date.now() -
+economy[interaction.user.id].lastCrime <
+cooldown
+) {
+
+return interaction.reply({
+content:
+"⏳ You must wait 5 minutes before committing another crime.",
+ephemeral: true
+});
+
+}
+
+economy[interaction.user.id].lastCrime =
+Date.now();
+
 const success =
 Math.random() < 0.5;
 
