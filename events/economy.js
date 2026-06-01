@@ -630,18 +630,62 @@ return interaction.reply(
 
 if (interaction.commandName === "shop") {
 
-return interaction.reply(
-`🛒 BloxDen Shop
+const embed = new EmbedBuilder()
+.setColor("#00BFFF")
+.setTitle("🛒 BloxDen Shop")
+.setDescription(
+"Purchase exclusive roles using your coins."
+)
+.addFields(
+{
+name: "💎 VIP",
+value: "5,000 🪙",
+inline: true
+},
+{
+name: "🛒 Merchant",
+value: "10,000 🪙",
+inline: true
+},
+{
+name: "👑 King",
+value: "25,000 🪙",
+inline: true
+},
+{
+name: "🚀 Boost",
+value: "30,000 🪙",
+inline: true
+},
+{
+name: "🌟 Legend",
+value: "50,000 🪙",
+inline: true
+},
+{
+name: "🔥 Mythic",
+value: "100,000 🪙",
+inline: true
+},
+{
+name: "💠 Elite",
+value: "250,000 🪙",
+inline: true
+},
+{
+name: "🏆 BloxDen God",
+value: "1,000,000 🪙",
+inline: true
+}
+)
+.setFooter({
+text: "Use /buy <item>"
+})
+.setTimestamp();
 
-💎 VIP Role — 5,000 🪙
-🛒 Merchant Role — 10,000 🪙
-👑 King Role — 25,000 🪙
-🚀 Boost Role — 30,000 🪙
-🌟 Legend Role — 50,000 🪙
-🔥 Mythic Role — 100,000 🪙
-💠 Elite Role — 250,000 🪙
-🏆 BloxDen God — 1,000,000 🪙`
-);
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
@@ -704,34 +748,37 @@ ${data.price} 🪙`
 /* INVENTORY */
 /* ========================= */
 
-if (
-interaction.commandName ===
-"inventory"
-) {
-
-const user =
-interaction.options.getUser("user") ||
-interaction.user;
-
-createUser(user.id);
-
-const inventory =
-economy[user.id].inventory;
-
-return interaction.reply(
-`📦 Inventory of ${user.username}
-
-${inventory.length
+const embed = new EmbedBuilder()
+.setColor("#FEE75C")
+.setAuthor({
+name: `${user.username}'s Inventory`,
+iconURL: user.displayAvatarURL()
+})
+.setThumbnail(user.displayAvatarURL())
+.setDescription(
+inventory.length
 ? inventory.join("\n")
-: "Empty"}`
-);
+: "📦 Inventory is empty"
+)
+.addFields({
+name: "Items",
+value: `${inventory.length}`,
+inline: true
+})
+.setFooter({
+text: "BloxDen Economy Inventory"
+})
+.setTimestamp();
 
-}
+return interaction.reply({
+embeds: [embed]
+});
 
 /* ========================= */
 /* PROFILE */
 /* ========================= */
 
+if (interaction.commandName === "profile") {
 if (interaction.commandName === "profile") {
 
 const user =
@@ -740,26 +787,78 @@ interaction.user;
 
 createUser(user.id);
 
-const data =
-economy[user.id];
+const data = economy[user.id];
 
-return interaction.reply(
-`👤 Profile of ${user.username}
-
-🪙 Coins:
-${data.coins}
-
-💼 Job:
-${data.job
+const embed = new EmbedBuilder()
+.setColor("#5865F2")
+.setAuthor({
+name: `${user.username}'s Economy Profile`,
+iconURL: user.displayAvatarURL()
+})
+.setThumbnail(user.displayAvatarURL())
+.addFields(
+{
+name: "🪙 Wallet",
+value: `**${formatCoins(data.coins)}**`,
+inline: true
+},
+{
+name: "💼 Job",
+value: data.job
 ? jobs[data.job].name
-: "None"}
+: "Unemployed",
+inline: true
+},
+{
+name: "🔥 Daily Streak",
+value: `**${data.dailyStreak} Days**`,
+inline: true
+},
+{
+name: "📦 Inventory",
+value: `**${data.inventory.length} Items**`,
+inline: true
+},
+{
+name: "🏦 Status",
+value:
+data.coins >= 1000000
+? "🏆 BloxDen God"
+: data.coins >= 250000
+? "💠 Elite"
+: data.coins >= 100000
+? "🔥 Mythic"
+: data.coins >= 50000
+? "🌟 Legend"
+: "👤 Member",
+inline: true
+},
+{
+name: "📈 Wealth Progress",
+value:
+`${"🟩".repeat(
+Math.min(
+10,
+Math.floor(data.coins / 100000)
+)
+)}${"⬜".repeat(
+10 -
+Math.min(
+10,
+Math.floor(data.coins / 100000)
+)
+)}`,
+inline: false
+}
+)
+.setFooter({
+text: "BloxDen Economy Profile"
+})
+.setTimestamp();
 
-📦 Inventory:
-${data.inventory.length}
-
-🔥 Daily Streak:
-${data.dailyStreak}`
-);
+return interaction.reply({
+embeds: [embed]
+});
 
 }
 
