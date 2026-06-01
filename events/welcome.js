@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { EmbedBuilder, PermissionsBitField } = require("discord.js");
 
 module.exports = (client) => {
 
@@ -9,212 +10,156 @@ module.exports = (client) => {
 let welcomeData = {};
 
 if (fs.existsSync("welcome.json")) {
-
-welcomeData = JSON.parse(
-fs.readFileSync("welcome.json")
-);
-
+  welcomeData = JSON.parse(fs.readFileSync("welcome.json", "utf8"));
 }
 
 /* ========================= */
-/* SAVE */
+/* SAVE FUNCTION */
 /* ========================= */
 
 function saveData() {
-
-fs.writeFileSync(
-"welcome.json",
-JSON.stringify(welcomeData, null, 2)
-);
-
+  fs.writeFileSync("welcome.json", JSON.stringify(welcomeData, null, 2));
 }
 
 /* ========================= */
-/* CREATE GUILD */
+/* INIT GUILD */
 /* ========================= */
 
 function createGuild(id) {
-
-if (!welcomeData[id]) {
-
-welcomeData[id] = {
-welcomeChannel: null,
-goodbyeChannel: null
-};
-
-}
-
+  if (!welcomeData[id]) {
+    welcomeData[id] = {
+      welcomeChannel: null,
+      goodbyeChannel: null
+    };
+  }
 }
 
 /* ========================= */
-/* MEMBER JOIN */
+/* MEMBER JOIN (WELCOME) */
 /* ========================= */
 
-client.on("guildMemberAdd", async member => {
+client.on("guildMemberAdd", async (member) => {
 
-createGuild(member.guild.id);
+  createGuild(member.guild.id);
 
-const channelId =
-welcomeData[member.guild.id]
-.welcomeChannel;
+  const channelId = welcomeData[member.guild.id].welcomeChannel;
+  if (!channelId) return;
 
-if (!channelId) return;
+  const channel = member.guild.channels.cache.get(channelId);
+  if (!channel) return;
 
-const channel =
-member.guild.channels.cache.get(
-channelId
-);
+  const embed = new EmbedBuilder()
+    .setColor("Green")
+    .setTitle("👋 Welcome to the Server!")
+    .setDescription(`Hey ${member}, welcome to **${member.guild.name}** 🎉`)
+    .addFields(
+      { name: "👥 Members", value: `${member.guild.memberCount}`, inline: true },
+      { name: "📜 Rule Reminder", value: "Please read rules & enjoy!", inline: false }
+    )
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+    .setFooter({ text: "We’re happy to have you here!" });
 
-if (!channel) return;
-
-channel.send(
-`👋 Welcome ${member} to **${member.guild.name}**!
-
-🎉 Hope you enjoy your stay!
-📜 Read the rules and have fun!`
-);
-
+  channel.send({ embeds: [embed] });
 });
 
 /* ========================= */
-/* MEMBER LEAVE */
+/* MEMBER LEAVE (GOODBYE) */
 /* ========================= */
 
-client.on("guildMemberRemove", async member => {
+client.on("guildMemberRemove", async (member) => {
 
-createGuild(member.guild.id);
+  createGuild(member.guild.id);
 
-const channelId =
-welcomeData[member.guild.id]
-.goodbyeChannel;
+  const channelId = welcomeData[member.guild.id].goodbyeChannel;
+  if (!channelId) return;
 
-if (!channelId) return;
+  const channel = member.guild.channels.cache.get(channelId);
+  if (!channel) return;
 
-const channel =
-member.guild.channels.cache.get(
-channelId
-);
+  const embed = new EmbedBuilder()
+    .setColor("Red")
+    .setTitle("👋 Member Left")
+    .setDescription(`**${member.user.tag}** left the server 😢`)
+    .addFields(
+      { name: "👥 Current Members", value: `${member.guild.memberCount}`, inline: true }
+    )
+    .setFooter({ text: "We hope they come back!" });
 
-if (!channel) return;
-
-channel.send(
-`😢 Goodbye **${member.user.tag}**
-
-💔 We hope to see you again someday!`
-);
-
+  channel.send({ embeds: [embed] });
 });
 
 /* ========================= */
-/* INTERACTIONS */
+/* INTERACTION COMMANDS */
 /* ========================= */
 
-client.on("interactionCreate", async interaction => {
+client.on("interactionCreate", async (interaction) => {
 
-if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
 
-try {
+  try {
 
-/* ========================= */
-/* SET WELCOME CHANNEL */
-/* ========================= */
+    /* ========================= */
+    /* SET WELCOME CHANNEL */
+    /* ========================= */
 
-if (
-interaction.commandName ===
-"welcomesetchannel"
-) {
+    if (interaction.commandName === "welcomesetchannel") {
 
-if (
-!interaction.member.permissions.has(
-"Administrator"
-)
-) {
+      if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({
+          content: "❌ You need Administrator permission",
+          ephemeral: true
+        });
+      }
 
-return interaction.reply({
-content:
-"❌ You need Administrator permission",
-ephemeral: true
+      const channel = interaction.options.getChannel("channel");
+
+      createGuild(interaction.guild.id);
+      welcomeData[interaction.guild.id].welcomeChannel = channel.id;
+      saveData();
+
+      return interaction.reply(`✅ Welcome channel set to ${channel}`);
+    }
+
+    /* ========================= */
+    /* SET GOODBYE CHANNEL */
+    /* ========================= */
+
+    if (interaction.commandName === "goodbyesetchannel") {
+
+      if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.reply({
+          content: "❌ You need Administrator permission",
+          ephemeral: true
+        });
+      }
+
+      const channel = interaction.options.getChannel("channel");
+
+      createGuild(interaction.guild.id);
+      welcomeData[interaction.guild.id].goodbyeChannel = channel.id;
+      saveData();
+
+      return interaction.reply(`✅ Goodbye channel set to ${channel}`);
+    }
+
+  } catch (err) {
+    console.error(err);
+
+    if (!interaction.replied) {
+      interaction.reply({
+        content: "❌ System error occurred",
+        ephemeral: true
+      });
+    }
+  }
 });
 
-}
-
-const channel =
-interaction.options.getChannel(
-"channel"
-);
-
-createGuild(interaction.guild.id);
-
-welcomeData[
-interaction.guild.id
-].welcomeChannel = channel.id;
-
-saveData();
-
-return interaction.reply(
-`✅ Welcome channel set to ${channel}`
-);
-
-}
-
 /* ========================= */
-/* SET GOODBYE CHANNEL */
+/* AUTO SAVE SAFETY */
 /* ========================= */
 
-if (
-interaction.commandName ===
-"goodbyesetchannel"
-) {
-
-if (
-!interaction.member.permissions.has(
-"Administrator"
-)
-) {
-
-return interaction.reply({
-content:
-"❌ You need Administrator permission",
-ephemeral: true
-});
-
-}
-
-const channel =
-interaction.options.getChannel(
-"channel"
-);
-
-createGuild(interaction.guild.id);
-
-welcomeData[
-interaction.guild.id
-].goodbyeChannel = channel.id;
-
-saveData();
-
-return interaction.reply(
-`✅ Goodbye channel set to ${channel}`
-);
-
-}
-
-} catch (err) {
-
-console.error(err);
-
-if (!interaction.replied) {
-
-interaction.reply({
-content:
-"❌ Welcome System Error",
-ephemeral: true
-});
-
-}
-
-}
-
-});
+process.on("exit", saveData);
+process.on("SIGINT", saveData);
+process.on("SIGTERM", saveData);
 
 };
