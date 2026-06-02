@@ -1107,8 +1107,7 @@ if (interaction.commandName === "blackjack") {
 
 if (interaction.commandName === "mines") {
 
-  const bet =
-    interaction.options.getInteger("bet");
+  const bet = interaction.options.getInteger("bet");
 
   createUser(interaction.user.id);
 
@@ -1125,9 +1124,7 @@ if (interaction.commandName === "mines") {
     });
   }
 
-  if (
-    economy[interaction.user.id].coins < bet
-  ) {
+  if (economy[interaction.user.id].coins < bet) {
     return interaction.reply({
       embeds: [
         createEmbed(
@@ -1140,7 +1137,7 @@ if (interaction.commandName === "mines") {
     });
   }
 
-  const win = Math.random() < 0.4; // 40% win chance
+  const win = Math.random() < 0.4;
 
   if (win) {
 
@@ -1154,8 +1151,7 @@ if (interaction.commandName === "mines") {
       .setColor("#57F287")
       .setAuthor({
         name: `${interaction.user.username} • Mines`,
-        iconURL:
-          interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL()
       })
       .setTitle("💣 Mines Victory")
       .setDescription(
@@ -1183,8 +1179,7 @@ if (interaction.commandName === "mines") {
       .setColor("#ED4245")
       .setAuthor({
         name: `${interaction.user.username} • Mines`,
-        iconURL:
-          interaction.user.displayAvatarURL()
+        iconURL: interaction.user.displayAvatarURL()
       })
       .setTitle("💥 BOOM!")
       .setDescription(
@@ -1205,3 +1200,28 @@ if (interaction.commandName === "mines") {
   }
 
 }
+
+/* ========================= */
+/* ERROR HANDLER */
+/* ========================= */
+
+} catch (err) {
+
+  console.error(err);
+
+  if (!interaction.replied) {
+    interaction.reply({
+      content: "❌ Economy Error",
+      ephemeral: true
+    });
+  }
+
+}
+
+});
+
+/* ========================= */
+/* END MODULE */
+/* ========================= */
+
+};
