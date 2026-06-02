@@ -742,6 +742,255 @@ if (interaction.commandName === "rob") {
         )
         .addFields(
           {
+/* ========================= */
+/* ROB */
+/* ========================= */
+
+if (interaction.commandName === "rob") {
+
+  const target =
+    interaction.options.getUser("user");
+
+  createUser(interaction.user.id);
+  createUser(target.id);
+
+  if (!target) {
+    return interaction.reply({
+      content: "❌ Please select a user.",
+      ephemeral: true
+    });
+  }
+
+  if (target.bot) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Target",
+          "You cannot rob bots.",
+          "#ED4245"
+        )
+      ]
+    });
+  }
+
+  if (target.id === interaction.user.id) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Target",
+          "You cannot rob yourself.",
+          "#ED4245"
+        )
+      ]
+    });
+  }
+
+  const cooldown = 30 * 60 * 1000;
+
+  const lastRob =
+    economy[interaction.user.id].lastRob || 0;
+
+  if (
+    Date.now() - lastRob < cooldown
+  ) {
+
+    const remaining =
+      cooldown - (Date.now() - lastRob);
+
+    const minutes =
+      Math.floor(remaining / 60000);
+
+    const seconds =
+      Math.floor(
+        (remaining % 60000) / 1000
+      );
+
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "⏳ Rob Cooldown",
+          `Try again in **${minutes}m ${seconds}s**`,
+          "#FEE75C"
+        )
+      ],
+      ephemeral: true
+    });
+
+  }
+
+  if (
+    economy[target.id].coins < 1000
+  ) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Rob Failed",
+          `${target.username} must have at least **1,000 🪙** to be robbed.`,
+          "#ED4245"
+        )
+      ]
+    });
+  }
+
+  economy[interaction.user.id].lastRob =
+    Date.now();
+
+  const success =
+    Math.random() < 0.45;
+
+  if (success) {
+
+    const amount = Math.max(
+      100,
+      Math.floor(
+        economy[target.id].coins *
+        (Math.random() * 0.15 + 0.05)
+      )
+    );
+
+    const stolen = Math.min(
+      amount,
+      economy[target.id].coins
+    );
+
+    const successMessages = [
+      "🕶️ You secretly picked their pocket.",
+      "💰 You stole a money bag.",
+      "🚗 You intercepted a cash delivery.",
+      "🏦 You robbed their vault."
+    ];
+
+    const message =
+      successMessages[
+        Math.floor(
+          Math.random() *
+          successMessages.length
+        )
+      ];
+
+    economy[target.id].coins -= stolen;
+    economy[interaction.user.id].coins += stolen;
+
+    saveData();
+
+    const embed =
+      new EmbedBuilder()
+        .setColor("#57F287")
+        .setAuthor({
+          name:
+            `${interaction.user.username} • Robbery`,
+          iconURL:
+            interaction.user.displayAvatarURL()
+        })
+        .setTitle(
+          "🔫 Successful Robbery"
+        )
+        .setDescription(message)
+        .setThumbnail(
+          target.displayAvatarURL()
+        )
+        .addFields(
+          {
+            name: "🎯 Victim",
+            value:
+              target.username,
+            inline: true
+          },
+          {
+            name: "💰 Stolen",
+            value:
+              `${formatCoins(stolen)} 🪙`,
+            inline: true
+          },
+          {
+            name: "📈 Success Rate",
+            value: "45%",
+            inline: true
+          },
+          {
+            name: "🏦 Your Balance",
+            value:
+              `${formatCoins(
+                economy[
+                  interaction.user.id
+                ].coins
+              )} 🪙`,
+            inline: false
+          },
+          {
+            name: "🎯 Victim Balance",
+            value:
+              `${formatCoins(
+                economy[target.id].coins
+              )} 🪙`,
+            inline: false
+          }
+        )
+        .setFooter({
+          text:
+            "BloxDen Economy • Rob System"
+        })
+        .setTimestamp();
+
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  } else {
+
+    const fine =
+      Math.floor(
+        Math.random() * 1000
+      ) + 500;
+
+    const failMessages = [
+      "🚔 The police caught you.",
+      "🛡️ The victim fought back.",
+      "📸 Security cameras identified you.",
+      "🚨 A witness reported the robbery."
+    ];
+
+    const message =
+      failMessages[
+        Math.floor(
+          Math.random() *
+          failMessages.length
+        )
+      ];
+
+    economy[
+      interaction.user.id
+    ].coins = Math.max(
+      0,
+      economy[
+        interaction.user.id
+      ].coins - fine
+    );
+
+    saveData();
+
+    const embed =
+      new EmbedBuilder()
+        .setColor("#ED4245")
+        .setAuthor({
+          name:
+            `${interaction.user.username} • Robbery`,
+          iconURL:
+            interaction.user.displayAvatarURL()
+        })
+        .setTitle(
+          "🚔 Robbery Failed"
+        )
+        .setDescription(message)
+        .setThumbnail(
+          target.displayAvatarURL()
+        )
+        .addFields(
+          {
             name: "🎯 Victim",
             value:
               target.username,
@@ -756,11 +1005,11 @@ if (interaction.commandName === "rob") {
           {
             name: "🚨 Status",
             value:
-              "Caught by police",
+              "Caught",
             inline: true
           },
           {
-            name: "🏦 New Balance",
+            name: "🏦 Your Balance",
             value:
               `${formatCoins(
                 economy[
@@ -783,6 +1032,7 @@ if (interaction.commandName === "rob") {
   }
 
 }
+
 /* ========================= */
 /* PAY */
 /* ========================= */
