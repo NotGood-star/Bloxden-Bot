@@ -542,75 +542,247 @@ embeds: [embed]
 
 if (interaction.commandName === "rob") {
 
+  const target =
+    interaction.options.getUser("user");
+
   createUser(interaction.user.id);
+  createUser(target.id);
 
-  const cooldown = 30 * 60 * 1000; // 30 minutes
-
-  const lastRob = economy[interaction.user.id].lastRob || 0;
-
-  if (Date.now() - lastRob < cooldown) {
+  if (target.bot) {
     return interaction.reply({
-      content: "⏳ You must wait 30 minutes before robbing again.",
-      ephemeral: true
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Target",
+          "You cannot rob bots.",
+          "#ED4245"
+        )
+      ]
     });
   }
 
-  const target = interaction.options.getUser("user");
-
   if (target.id === interaction.user.id) {
-    return interaction.reply("❌ You can't rob yourself");
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Target",
+          "You cannot rob yourself.",
+          "#ED4245"
+        )
+      ]
+    });
   }
 
-  createUser(target.id);
+  const cooldown =
+    30 * 60 * 1000;
 
-  if (economy[target.id].coins < 500) {
-    return interaction.reply("❌ User has low coins");
+  const lastRob =
+    economy[interaction.user.id].lastRob || 0;
+
+  if (
+    Date.now() - lastRob <
+    cooldown
+  ) {
+
+    const remaining =
+      cooldown -
+      (Date.now() - lastRob);
+
+    const minutes =
+      Math.floor(
+        remaining / 60000
+      );
+
+    const seconds =
+      Math.floor(
+        (remaining % 60000) / 1000
+      );
+
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "⏳ Cooldown Active",
+          `Try again in **${minutes}m ${seconds}s**`,
+          "#FEE75C"
+        )
+      ],
+      ephemeral: true
+    });
+
   }
 
-  const success = Math.random() < 0.5;
+  if (
+    economy[target.id].coins < 1000
+  ) {
 
-  economy[interaction.user.id].lastRob = Date.now();
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Rob Failed",
+          `${target.username} doesn't have enough coins to rob.`,
+          "#ED4245"
+        )
+      ]
+    });
+
+  }
+
+  economy[
+    interaction.user.id
+  ].lastRob = Date.now();
+
+  const success =
+    Math.random() < 0.45;
 
   if (success) {
 
-  const amount =
-    Math.floor(Math.random() * 1000) + 200;
+    const amount =
+      Math.floor(
+        economy[target.id].coins *
+        (Math.random() * 0.15 + 0.05)
+      );
 
-  economy[interaction.user.id].coins +=
-    amount;
+    economy[target.id].coins -= amount;
 
-  economy[target.id].coins -= amount;
+    economy[
+      interaction.user.id
+    ].coins += amount;
 
-  saveData();
+    saveData();
 
-  const embed = createEmbed(
-    interaction,
-    "🔫 Rob Successful",
-    `Victim: **${target.username}**\n\n💰 Stolen: **${formatCoins(amount)} 🪙**`,
-    "#57F287"
-  );
+    const embed =
+      new EmbedBuilder()
+        .setColor("#57F287")
+        .setAuthor({
+          name:
+            `${interaction.user.username} • Robbery`,
+          iconURL:
+            interaction.user.displayAvatarURL()
+        })
+        .setTitle(
+          "🔫 Successful Robbery"
+        )
+        .setThumbnail(
+          target.displayAvatarURL()
+        )
+        .addFields(
+          {
+            name: "🎯 Victim",
+            value:
+              target.username,
+            inline: true
+          },
+          {
+            name: "💰 Stolen",
+            value:
+              `${formatCoins(amount)} 🪙`,
+            inline: true
+          },
+          {
+            name: "📈 Success Rate",
+            value: "45%",
+            inline: true
+          },
+          {
+            name: "🏦 New Balance",
+            value:
+              `${formatCoins(
+                economy[
+                  interaction.user.id
+                ].coins
+              )} 🪙`,
+            inline: false
+          }
+        )
+        .setFooter({
+          text:
+            "BloxDen Economy • Rob System"
+        })
+        .setTimestamp();
 
-  return interaction.reply({
-    embeds: [embed]
-  });
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  } else {
+
+    const fine =
+      Math.floor(
+        Math.random() * 1000
+      ) + 500;
+
+    economy[
+      interaction.user.id
+    ].coins = Math.max(
+      0,
+      economy[
+        interaction.user.id
+      ].coins - fine
+    );
+
+    saveData();
+
+    const embed =
+      new EmbedBuilder()
+        .setColor("#ED4245")
+        .setAuthor({
+          name:
+            `${interaction.user.username} • Robbery`,
+          iconURL:
+            interaction.user.displayAvatarURL()
+        })
+        .setTitle(
+          "🚔 Robbery Failed"
+        )
+        .setThumbnail(
+          target.displayAvatarURL()
+        )
+        .addFields(
+          {
+            name: "🎯 Victim",
+            value:
+              target.username,
+            inline: true
+          },
+          {
+            name: "💸 Fine",
+            value:
+              `${formatCoins(fine)} 🪙`,
+            inline: true
+          },
+          {
+            name: "🚨 Status",
+            value:
+              "Caught by police",
+            inline: true
+          },
+          {
+            name: "🏦 New Balance",
+            value:
+              `${formatCoins(
+                economy[
+                  interaction.user.id
+                ].coins
+              )} 🪙`,
+            inline: false
+          }
+        )
+        .setFooter({
+          text:
+            "BloxDen Economy • Rob System"
+        })
+        .setTimestamp();
+
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  }
 
 }
-
-saveData();
-
-const embed = createEmbed(
-  interaction,
-  "🚔 Rob Failed",
-  "The victim escaped and called the police.",
-  "#ED4245"
-);
-
-return interaction.reply({
-  embeds: [embed]
-});
-
-}
-
 /* ========================= */
 /* PAY */
 /* ========================= */
