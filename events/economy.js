@@ -949,7 +949,6 @@ if (interaction.commandName === "blackjack") {
   createUser(interaction.user.id);
 
   if (!bet || bet <= 0) {
-
     return interaction.reply({
       embeds: [
         createEmbed(
@@ -960,13 +959,11 @@ if (interaction.commandName === "blackjack") {
         )
       ]
     });
-
   }
 
   if (
     economy[interaction.user.id].coins < bet
   ) {
-
     return interaction.reply({
       embeds: [
         createEmbed(
@@ -977,75 +974,116 @@ if (interaction.commandName === "blackjack") {
         )
       ]
     });
-
   }
 
-  const player =
-    Math.floor(Math.random() * 11) + 10;
+  // Card Generator
+  const drawCard = () =>
+    Math.floor(Math.random() * 10) + 1;
 
-  const dealer =
-    Math.floor(Math.random() * 11) + 10;
+  // Player Cards
+  let playerCards = [
+    drawCard(),
+    drawCard()
+  ];
 
-  const win =
-    player > dealer &&
-    player <= 21;
+  // Dealer Cards
+  let dealerCards = [
+    drawCard(),
+    drawCard()
+  ];
 
-  if (win) {
+  let playerTotal =
+    playerCards.reduce((a, b) => a + b, 0);
+
+  let dealerTotal =
+    dealerCards.reduce((a, b) => a + b, 0);
+
+  // Dealer draws until 17+
+  while (dealerTotal < 17) {
+    const card = drawCard();
+    dealerCards.push(card);
+    dealerTotal += card;
+  }
+
+  let result = "";
+  let color = "#5865F2";
+
+  if (playerTotal > 21) {
+
+    economy[interaction.user.id].coins -= bet;
+
+    result = `💥 Bust!\nLost **${formatCoins(bet)} 🪙**`;
+    color = "#ED4245";
+
+  } else if (
+    dealerTotal > 21 ||
+    playerTotal > dealerTotal
+  ) {
 
     economy[interaction.user.id].coins += bet;
+
+    result = `🎉 You Won!\nEarned **${formatCoins(bet)} 🪙**`;
+    color = "#57F287";
+
+  } else if (
+    playerTotal === dealerTotal
+  ) {
+
+    result = "🤝 Push (Tie)\nNo coins won or lost.";
+    color = "#FEE75C";
 
   } else {
 
     economy[interaction.user.id].coins -= bet;
+
+    result = `💀 You Lost!\nLost **${formatCoins(bet)} 🪙**`;
+    color = "#ED4245";
 
   }
 
   saveData();
 
   const embed = new EmbedBuilder()
-    .setColor(
-      win
-        ? "#57F287"
-        : "#ED4245"
-    )
+    .setColor(color)
     .setAuthor({
       name: `${interaction.user.username} • Blackjack`,
       iconURL:
         interaction.user.displayAvatarURL()
     })
-    .setTitle(
-      win
-        ? "🃏 Blackjack Victory"
-        : "💀 Blackjack Defeat"
-    )
-    .setThumbnail(
-      interaction.user.displayAvatarURL()
-    )
+    .setTitle("🃏 Blackjack")
     .addFields(
       {
-        name: "🧑 Your Hand",
-        value: `${player}`,
-        inline: true
-      },
-      {
-        name: "🤖 Dealer Hand",
-        value: `${dealer}`,
-        inline: true
-      },
-      {
-        name: "🎲 Bet Amount",
-        value: `${formatCoins(bet)} 🪙`,
-        inline: true
-      },
-      {
-        name: win
-          ? "🎉 Profit"
-          : "💸 Loss",
-        value: `${formatCoins(bet)} 🪙`,
+        name: "🧑 Your Cards",
+        value: `${playerCards.join(", ")}`,
         inline: false
       },
       {
-        name: "💰 New Balance",
+        name: "🧑 Your Total",
+        value: `${playerTotal}`,
+        inline: true
+      },
+      {
+        name: "🤖 Dealer Cards",
+        value: `${dealerCards.join(", ")}`,
+        inline: false
+      },
+      {
+        name: "🤖 Dealer Total",
+        value: `${dealerTotal}`,
+        inline: true
+      },
+      {
+        name: "🎲 Bet",
+        value: `${formatCoins(bet)} 🪙`,
+        inline: true
+      },
+      {
+        name: "📊 Result",
+        value: result,
+        inline: false
+      },
+      {
+        name: "💰 Balance",
         value: `${formatCoins(
           economy[interaction.user.id].coins
         )} 🪙`,
@@ -1069,60 +1107,101 @@ if (interaction.commandName === "blackjack") {
 
 if (interaction.commandName === "mines") {
 
-const bet =
-interaction.options.getInteger("bet");
+  const bet =
+    interaction.options.getInteger("bet");
 
-createUser(interaction.user.id);
+  createUser(interaction.user.id);
 
-if (
-economy[
-interaction.user.id
-].coins < bet
-) {
+  if (!bet || bet <= 0) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Invalid Bet",
+          "Bet amount must be greater than 0.",
+          "#ED4245"
+        )
+      ]
+    });
+  }
 
-return interaction.reply(
-"❌ Not enough coins"
-);
+  if (
+    economy[interaction.user.id].coins < bet
+  ) {
+    return interaction.reply({
+      embeds: [
+        createEmbed(
+          interaction,
+          "❌ Not Enough Coins",
+          `You need **${formatCoins(bet)} 🪙** to play Mines.`,
+          "#ED4245"
+        )
+      ]
+    });
+  }
 
-}
+  const win = Math.random() < 0.4; // 40% win chance
 
-const win =
-Math.random() < 0.4;
+  if (win) {
 
-if (win) {
+    const reward = bet * 2;
 
-  const reward = bet * 2;
+    economy[interaction.user.id].coins += reward;
 
-  economy[interaction.user.id].coins += reward;
+    saveData();
 
-  saveData();
+    const embed = new EmbedBuilder()
+      .setColor("#57F287")
+      .setAuthor({
+        name: `${interaction.user.username} • Mines`,
+        iconURL:
+          interaction.user.displayAvatarURL()
+      })
+      .setTitle("💣 Mines Victory")
+      .setDescription(
+        `🎉 You avoided all mines!\n\n💰 Won: **${formatCoins(reward)} 🪙**`
+      )
+      .addFields({
+        name: "💰 New Balance",
+        value: `${formatCoins(
+          economy[interaction.user.id].coins
+        )} 🪙`
+      })
+      .setTimestamp();
 
-  const embed = createEmbed(
-    interaction,
-    "💣 Mines Victory",
-    `🎉 Won **${formatCoins(reward)} 🪙**`,
-    "#57F287"
-  );
+    return interaction.reply({
+      embeds: [embed]
+    });
 
-  return interaction.reply({
-    embeds: [embed]
-  });
+  } else {
 
-} else {
+    economy[interaction.user.id].coins -= bet;
 
-  economy[interaction.user.id].coins -= bet;
+    saveData();
 
-  saveData();
+    const embed = new EmbedBuilder()
+      .setColor("#ED4245")
+      .setAuthor({
+        name: `${interaction.user.username} • Mines`,
+        iconURL:
+          interaction.user.displayAvatarURL()
+      })
+      .setTitle("💥 BOOM!")
+      .setDescription(
+        `❌ You stepped on a mine!\n\n💸 Lost: **${formatCoins(bet)} 🪙**`
+      )
+      .addFields({
+        name: "💰 New Balance",
+        value: `${formatCoins(
+          economy[interaction.user.id].coins
+        )} 🪙`
+      })
+      .setTimestamp();
 
-  const embed = createEmbed(
-    interaction,
-    "💥 BOOM!",
-    `❌ Lost **${formatCoins(bet)} 🪙**`,
-    "#ED4245"
-  );
+    return interaction.reply({
+      embeds: [embed]
+    });
 
-  return interaction.reply({
-    embeds: [embed]
-  });
+  }
 
 }
