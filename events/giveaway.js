@@ -110,8 +110,14 @@ parseTime(duration);
 if (!ms) {
 
 return interaction.reply({
-content:
-"❌ Invalid duration.\nUse: 10s, 5m, 2h, 1d",
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Invalid Duration")
+.setDescription(
+"Use formats like:\n`10s` `5m` `1h` `1d`"
+)
+],
 ephemeral: true
 });
 
@@ -123,8 +129,8 @@ Date.now() + ms;
 const button =
 new ButtonBuilder()
 .setCustomId("giveaway_join")
-.setLabel("🎉 Join Giveaway")
-.setStyle(ButtonStyle.Primary);
+.setLabel("🎉 Join (0)")
+.setStyle(ButtonStyle.Success);
 
 const row =
 new ActionRowBuilder()
@@ -132,27 +138,35 @@ new ActionRowBuilder()
 
 const embed =
 new EmbedBuilder()
-const embed = new EmbedBuilder()
 .setColor("#5865F2")
 .setTitle("🎉 BloxDen Giveaway")
-.setThumbnail(client.user.displayAvatarURL())
+.setThumbnail(
+client.user.displayAvatarURL()
+)
 .setDescription(
-`🏆 Prize
-**${prize}**
+`🏆 **Prize**
+${prize}
 
-👑 Winners
-**${winners}**
+👑 **Winner(s)**
+${winners}
 
-🎟️ Entries
-**0**
+🎟️ **Entries**
+0
 
-⏰ Ends
+⏰ **Ends**
 <t:${Math.floor(endTime / 1000)}:R>
 
-🎊 Click the button below to join!`
+🎊 Click the button below to enter!`
+)
+.addFields(
+{
+name: "📢 Hosted By",
+value: `${interaction.user}`,
+inline: true
+}
 )
 .setFooter({
-text: `Hosted by ${interaction.user.username}`
+text: "BloxDen Giveaway System"
 })
 .setTimestamp();
 
@@ -171,6 +185,103 @@ ended: false,
 messageId: msg.id,
 channelId: interaction.channel.id
 });
+
+setTimeout(async () => {
+
+const data =
+client.giveaways.get(msg.id);
+
+if (!data || data.ended)
+return;
+
+data.ended = true;
+
+const disabledButton =
+new ButtonBuilder()
+.setCustomId("giveaway_ended")
+.setLabel(
+`🎉 Entries (${data.users.length})`
+)
+.setStyle(ButtonStyle.Secondary)
+.setDisabled(true);
+
+await msg.edit({
+components: [
+new ActionRowBuilder()
+.addComponents(disabledButton)
+]
+});
+
+if (
+data.users.length === 0
+) {
+
+const noWinnerEmbed =
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Ended")
+.setDescription(
+`🏆 Prize
+
+${prize}
+
+No one joined the giveaway.`
+)
+.setTimestamp();
+
+return interaction.channel.send({
+embeds: [noWinnerEmbed]
+});
+
+}
+
+const shuffled =
+[...data.users].sort(
+() => 0.5 - Math.random()
+);
+
+const selected =
+shuffled.slice(
+0,
+Math.min(
+data.winners,
+data.users.length
+)
+);
+
+const winnerEmbed =
+new EmbedBuilder()
+.setColor("#57F287")
+.setTitle("🎉 Giveaway Ended")
+.setDescription(
+`🏆 **Prize**
+${prize}
+
+🎊 **Winner(s)**
+
+${selected.map(
+u => `<@${u}>`
+).join("\n")}
+
+👥 **Entries**
+${data.users.length}`
+)
+.setFooter({
+text: "Congratulations!"
+})
+.setTimestamp();
+
+interaction.channel.send({
+content:
+selected.map(
+u => `<@${u}>`
+).join(" "),
+embeds: [winnerEmbed]
+});
+
+}, ms);
+
+  }
 
 /* ========================= */
 /* END GIVEAWAY */
