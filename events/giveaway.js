@@ -132,20 +132,29 @@ new ActionRowBuilder()
 
 const embed =
 new EmbedBuilder()
+const embed = new EmbedBuilder()
+.setColor("#5865F2")
 .setTitle("🎉 BloxDen Giveaway")
+.setThumbnail(client.user.displayAvatarURL())
 .setDescription(
-`🏆 Prize: **${prize}**
+`🏆 Prize
+**${prize}**
 
-👑 Winners: **${winners}**
+👑 Winners
+**${winners}**
 
-⏰ Ends In: **${duration}**
+🎟️ Entries
+**0**
+
+⏰ Ends
+<t:${Math.floor(endTime / 1000)}:R>
 
 🎊 Click the button below to join!`
 )
 .setFooter({
-text:
-`Hosted by ${interaction.user.username}`
-});
+text: `Hosted by ${interaction.user.username}`
+})
+.setTimestamp();
 
 const msg =
 await interaction.reply({
@@ -194,16 +203,27 @@ data.users.sort(
 const selected =
 shuffled.slice(0, winners);
 
-interaction.channel.send(
-`🎉 Giveaway Ended!
+const endEmbed = new EmbedBuilder()
+.setColor("#57F287")
+.setTitle("🎉 Giveaway Ended")
+.setDescription(
+`🏆 Prize
+**${prize}**
 
-🏆 Prize: **${prize}**
+🎊 Winner(s)
 
-🎊 Winner(s):
 ${selected.map(
 u => `<@${u}>`
 ).join(", ")}`
-);
+)
+.setFooter({
+text: "BloxDen Giveaway System"
+})
+.setTimestamp();
+
+interaction.channel.send({
+embeds: [endEmbed]
+});
 
 }, ms);
 
@@ -236,8 +256,14 @@ ephemeral: true
 if (data.users.length === 0) {
 
 return interaction.reply({
-content:
-"❌ No users joined",
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ No Participants")
+.setDescription(
+"No one joined this giveaway."
+)
+],
 ephemeral: true
 });
 
@@ -251,9 +277,26 @@ data.users.length
 )
 ];
 
-return interaction.reply(
-`🎉 New Winner: <@${winner}>`
-);
+const rerollEmbed =
+new EmbedBuilder()
+.setColor("#57F287")
+.setTitle("🔄 Giveaway Rerolled")
+.setDescription(
+`🎉 New Winner
+
+<@${winner}>
+
+🏆 Prize
+**${data.prize}**`
+)
+.setFooter({
+text: `Message ID: ${messageId}`
+})
+.setTimestamp();
+
+return interaction.reply({
+embeds: [rerollEmbed]
+});
 
 }
 
@@ -277,7 +320,15 @@ if (!data) {
 
 return interaction.reply({
 content:
-"❌ Giveaway not found",
+return interaction.reply({
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Not Found")
+.setDescription(
+"No giveaway exists with that Message ID."
+)
+],
 ephemeral: true
 });
 
@@ -287,9 +338,16 @@ data.ended = true;
 
 if (data.users.length === 0) {
 
-return interaction.reply(
-"❌ No users joined"
-);
+return interaction.reply({
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Ended")
+.setDescription(
+"No one joined this giveaway."
+)
+]
+});
 
 }
 
@@ -301,14 +359,33 @@ data.users.sort(
 const selected =
 shuffled.slice(0, data.winners);
 
-return interaction.reply(
-`🎉 Giveaway Ended!
+const endEmbed =
+new EmbedBuilder()
+.setColor("#5865F2")
+.setTitle("🎉 Giveaway Ended")
+.setDescription(
+`🏆 Prize
 
-🏆 Winner(s):
+**${data.prize}**
+
+🎊 Winner(s)
+
 ${selected.map(
 u => `<@${u}>`
-).join(", ")}`
-);
+).join("\n")}
+
+👥 Entries
+
+**${data.users.length}**`
+)
+.setFooter({
+text: "BloxDen Giveaway System"
+})
+.setTimestamp();
+
+return interaction.reply({
+embeds: [endEmbed]
+});
 
 }
 
@@ -337,8 +414,14 @@ interaction.message.id
 if (!giveaway) {
 
 return interaction.reply({
-content:
-"❌ Giveaway not found",
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Not Found")
+.setDescription(
+"This giveaway no longer exists."
+)
+],
 ephemeral: true
 });
 
@@ -347,8 +430,14 @@ ephemeral: true
 if (giveaway.ended) {
 
 return interaction.reply({
-content:
-"❌ Giveaway already ended",
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Ended")
+.setDescription(
+"This giveaway has already ended."
+)
+],
 ephemeral: true
 });
 
@@ -361,8 +450,14 @@ interaction.user.id
 ) {
 
 return interaction.reply({
-content:
-"⚠️ You already joined this giveaway",
+embeds: [
+new EmbedBuilder()
+.setColor("#FEE75C")
+.setTitle("⚠️ Already Joined")
+.setDescription(
+"You have already entered this giveaway."
+)
+],
 ephemeral: true
 });
 
@@ -373,31 +468,25 @@ interaction.user.id
 );
 
 return interaction.reply({
-content:
-"🎉 You joined the giveaway!",
+embeds: [
+new EmbedBuilder()
+.setColor("#57F287")
+.setTitle("🎉 Giveaway Joined")
+.setDescription(
+`Successfully entered the giveaway!
+
+🏆 Prize
+**${giveaway.prize}**
+
+🎟️ Total Entries
+**${giveaway.users.length}**`
+)
+.setFooter({
+text: "Good luck!"
+})
+.setTimestamp()
+],
 ephemeral: true
 });
 
 }
-
-}
-
-} catch (err) {
-
-console.error(err);
-
-if (!interaction.replied) {
-
-interaction.reply({
-content:
-"❌ Giveaway System Error",
-ephemeral: true
-});
-
-}
-
-}
-
-});
-
-};
