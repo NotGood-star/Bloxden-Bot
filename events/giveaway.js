@@ -465,10 +465,7 @@ if (interaction.isButton()) {
 /* JOIN GIVEAWAY */
 /* ========================= */
 
-if (
-interaction.customId ===
-"giveaway_join"
-) {
+if (interaction.customId === "giveaway_join") {
 
 const giveaway =
 client.giveaways.get(
@@ -519,7 +516,7 @@ new EmbedBuilder()
 .setColor("#FEE75C")
 .setTitle("⚠️ Already Joined")
 .setDescription(
-"You have already entered this giveaway."
+"You have already joined this giveaway."
 )
 ],
 ephemeral: true
@@ -530,6 +527,8 @@ ephemeral: true
 giveaway.users.push(
 interaction.user.id
 );
+
+/* UPDATE BUTTON */
 
 const button =
 new ButtonBuilder()
@@ -547,30 +546,33 @@ await interaction.message.edit({
 components: [row]
 });
 
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#57F287")
-...
-return interaction.reply({
-embeds: [
+/* SUCCESS EMBED */
+
+const embed =
 new EmbedBuilder()
 .setColor("#57F287")
 .setTitle("🎉 Giveaway Joined")
+.setThumbnail(
+interaction.user.displayAvatarURL()
+)
 .setDescription(
-`Successfully entered the giveaway!
+`You successfully entered the giveaway!
 
 🏆 Prize
 **${giveaway.prize}**
 
 🎟️ Total Entries
-**${giveaway.users.length}**`
+**${giveaway.users.length}**
+
+🍀 Good Luck!`
 )
 .setFooter({
-text: "Good luck!"
+text: "BloxDen Giveaway System"
 })
-.setTimestamp()
-],
+.setTimestamp();
+
+return interaction.reply({
+embeds: [embed],
 ephemeral: true
 });
 
