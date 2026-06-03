@@ -284,63 +284,6 @@ embeds: [winnerEmbed]
   }
 
 /* ========================= */
-/* END GIVEAWAY */
-/* ========================= */
-
-setTimeout(async () => {
-
-const data =
-client.giveaways.get(msg.id);
-
-if (!data) return;
-
-if (data.ended) return;
-
-data.ended = true;
-
-if (data.users.length === 0) {
-
-return interaction.channel.send(
-"❌ No one joined the giveaway."
-);
-
-}
-
-const shuffled =
-data.users.sort(
-() => 0.5 - Math.random()
-);
-
-const selected =
-shuffled.slice(0, winners);
-
-const endEmbed = new EmbedBuilder()
-.setColor("#57F287")
-.setTitle("🎉 Giveaway Ended")
-.setDescription(
-`🏆 Prize
-**${prize}**
-
-🎊 Winner(s)
-
-${selected.map(
-u => `<@${u}>`
-).join(", ")}`
-)
-.setFooter({
-text: "BloxDen Giveaway System"
-})
-.setTimestamp();
-
-interaction.channel.send({
-embeds: [endEmbed]
-});
-
-}, ms);
-
-}
-
-/* ========================= */
 /* REROLL */
 /* ========================= */
 
@@ -430,8 +373,18 @@ client.giveaways.get(messageId);
 if (!data) {
 
 return interaction.reply({
-content:
-return interaction.reply({
+embeds: [
+new EmbedBuilder()
+.setColor("#ED4245")
+.setTitle("❌ Giveaway Not Found")
+.setDescription(
+"No giveaway exists with that Message ID."
+)
+],
+ephemeral: true
+});
+
+}
 embeds: [
 new EmbedBuilder()
 .setColor("#ED4245")
@@ -578,6 +531,27 @@ giveaway.users.push(
 interaction.user.id
 );
 
+const button =
+new ButtonBuilder()
+.setCustomId("giveaway_join")
+.setLabel(
+`🎉 Join (${giveaway.users.length})`
+)
+.setStyle(ButtonStyle.Success);
+
+const row =
+new ActionRowBuilder()
+.addComponents(button);
+
+await interaction.message.edit({
+components: [row]
+});
+
+return interaction.reply({
+embeds: [
+new EmbedBuilder()
+.setColor("#57F287")
+...
 return interaction.reply({
 embeds: [
 new EmbedBuilder()
