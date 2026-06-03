@@ -9,19 +9,21 @@ const {
 
 const fs = require("fs");
 
-// =========================
-// SIMPLE DATABASE FILE
-// =========================
-const FILE = "./giveaways.json";
+const DB = "./giveaways.json";
 
-let db = fs.existsSync(FILE)
-  ? JSON.parse(fs.readFileSync(FILE))
+// =========================
+// LOAD DB
+// =========================
+let data = fs.existsSync(DB)
+  ? JSON.parse(fs.readFileSync(DB))
   : {};
 
-const save = () => fs.writeFileSync(FILE, JSON.stringify(db, null, 2));
+function save() {
+  fs.writeFileSync(DB, JSON.stringify(data, null, 2));
+}
 
 // =========================
-// TIME PARSER
+// PARSE TIME
 // =========================
 function parseTime(t) {
   const m = t.match(/(\d+)(s|m|h)/);
@@ -29,17 +31,18 @@ function parseTime(t) {
 
   const n = parseInt(m[1]);
   if (m[2] === "s") return n * 1000;
-  if (m[2] === "m") return n * 60 * 1000;
-  if (m[2] === "h") return n * 60 * 60 * 1000;
+  if (m[2] === "m") return n * 60000;
+  if (m[2] === "h") return n * 3600000;
 }
 
 // =========================
-// MODULE
+// MAIN COMMAND
 // =========================
 module.exports = {
+
   data: new SlashCommandBuilder()
     .setName("giveaway")
-    .setDescription("🎁 Giveaway System")
+    .setDescription("🎉 Pro Giveaway System")
     .addSubcommand(s =>
       s.setName("start")
         .addStringOption(o => o.setName("duration").setRequired(true))
@@ -55,37 +58,35 @@ module.exports = {
         .addStringOption(o => o.setName("id").setRequired(true))
     ),
 
+  // =========================
+  // EXECUTE
+  // =========================
   async execute(interaction, client) {
 
     const sub = interaction.options.getSubcommand();
 
-    // =========================
     // START
-    // =========================
     if (sub === "start") {
 
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+      if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
         return interaction.reply({ content: "❌ No permission", ephemeral: true });
-      }
 
       const duration = interaction.options.getString("duration");
       const winners = interaction.options.getInteger("winners");
       const prize = interaction.options.getString("prize");
 
       const ms = parseTime(duration);
-      if (!ms) return interaction.reply({ content: "❌ Invalid time", ephemeral: true });
-
       const end = Date.now() + ms;
 
       const embed = new EmbedBuilder()
         .setTitle("🎉 GIVEAWAY")
         .setColor("#a855f7")
         .setDescription(`
-💎 Prize: **${prize}**
-🏆 Winners: **${winners}**
-⏰ Ends: <t:${Math.floor(end / 1000)}:R>
+💎 **Prize:** ${prize}
+🏆 **Winners:** ${winners}
+⏰ **Ends:** <t:${Math.floor(end / 1000)}:R>
 
-Press button to join!
+Click button below to join!
         `);
 
       const row = new ActionRowBuilder().addComponents(
@@ -105,7 +106,7 @@ Press button to join!
         components: [row]
       });
 
-      db[msg.id] = {
+      data[msg.id] = {
         channelId: interaction.channel.id,
         prize,
         winners,
@@ -120,56 +121,52 @@ Press button to join!
       return interaction.reply({ content: "✅ Giveaway started!", ephemeral: true });
     }
 
-    // =========================
     // END
-    // =========================
     if (sub === "end") {
       await endGiveaway(client, interaction.options.getString("id"));
       return interaction.reply({ content: "✅ Ended", ephemeral: true });
     }
 
-    // =========================
     // REROLL
-    // =========================
     if (sub === "reroll") {
 
       const id = interaction.options.getString("id");
-      const g = db[id];
+      const g = data[id];
 
-      if (!g) return interaction.reply({ content: "❌ Not found", ephemeral: true });
+      if (!g || !g.users.length)
+        return interaction.reply({ content: "❌ No users", ephemeral: true });
 
-      const users = g.users;
-      if (!users.length) return interaction.reply({ content: "❌ No users", ephemeral: true });
-
-      const winner = users[Math.floor(Math.random() * users.length)];
+      const winner = g.users[Math.floor(Math.random() * g.users.length)];
 
       return interaction.reply(`🎉 New Winner: <@${winner}>`);
     }
-  }
-};
+  },
 
-// =========================
-// BUTTONS (JOIN / LEAVE)
-// =========================
-module.exports.buttonHandler = async (interaction) => {
+  // =========================
+  // BUTTONS
+  // =========================
+  async buttons(interaction) {
 
-  const g = db[interaction.message.id];
-  if (!g) return;
+    const g = data[interaction.message.id];
+    if (!g) return;
 
-  if (interaction.customId === "gw_join") {
-    if (!g.users.includes(interaction.user.id)) {
-      g.users.push(interaction.user.id);
-      save();
+    if (interaction.customId === "gw_join") {
+
+      if (!g.users.includes(interaction.user.id)) {
+        g.users.push(interaction.user.id);
+        save();
+      }
+
+      return interaction.reply({ content: "🎉 Joined!", ephemeral: true });
     }
 
-    return interaction.reply({ content: "🎉 Joined!", ephemeral: true });
-  }
+    if (interaction.customId === "gw_leave") {
 
-  if (interaction.customId === "gw_leave") {
-    g.users = g.users.filter(u => u !== interaction.user.id);
-    save();
+      g.users = g.users.filter(u => u !== interaction.user.id);
+      save();
 
-    return interaction.reply({ content: "❌ Left", ephemeral: true });
+      return interaction.reply({ content: "❌ Left", ephemeral: true });
+    }
   }
 };
 
@@ -178,7 +175,7 @@ module.exports.buttonHandler = async (interaction) => {
 // =========================
 async function endGiveaway(client, id) {
 
-  const g = db[id];
+  const g = data[id];
   if (!g) return;
 
   const channel = await client.channels.fetch(g.channelId);
@@ -188,9 +185,8 @@ async function endGiveaway(client, id) {
 
   const users = g.users;
 
-  if (!users.length) {
-    return channel.send("❌ No participants.");
-  }
+  if (!users.length)
+    return channel.send("❌ No participants");
 
   const winners = [];
 
@@ -207,6 +203,6 @@ async function endGiveaway(client, id) {
 
   channel.send({ embeds: [embed] });
 
-  delete db[id];
+  delete data[id];
   save();
 }
