@@ -1,579 +1,220 @@
 const {
-ActionRowBuilder,
-ButtonBuilder,
-ButtonStyle,
-EmbedBuilder
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionsBitField
 } = require("discord.js");
 
-module.exports = (client) => {
+// =========================
+// STORAGE (NO DATABASE)
+// =========================
+const giveaways = new Map();
+
+// =========================
+// MAIN EXPORT
+// =========================
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("giveaway")
+    .setDescription("🎁 Ultimate Giveaway System")
+    .addSubcommand(cmd =>
+      cmd.setName("start")
+        .setDescription("Start giveaway")
+        .addStringOption(o => o.setName("duration").setRequired(true))
+        .addIntegerOption(o => o.setName("winners").setRequired(true))
+        .addStringOption(o => o.setName("prize").setRequired(true))
+    )
+    .addSubcommand(cmd =>
+      cmd.setName("end")
+        .setDescription("End giveaway")
+        .addStringOption(o => o.setName("messageid").setRequired(true))
+    )
+    .addSubcommand(cmd =>
+      cmd.setName("reroll")
+        .setDescription("Reroll giveaway")
+        .addStringOption(o => o.setName("messageid").setRequired(true))
+    ),
+
+  async execute(interaction, client) {
+
+    const sub = interaction.options.getSubcommand();
+
+    // =========================
+    // START
+    // =========================
+    if (sub === "start") {
+
+      if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return interaction.reply({ content: "❌ No permission", ephemeral: true });
+      }
+
+      const duration = interaction.options.getString("duration");
+      const winners = interaction.options.getInteger("winners");
+      const prize = interaction.options.getString("prize");
+
+      const ms = parseTime(duration);
+      if (!ms) return interaction.reply({ content: "❌ Invalid time format", ephemeral: true });
+
+      const endTime = Date.now() + ms;
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎉 GIVEAWAY")
+        .setColor("#a855f7")
+        .setDescription(`
+💎 **Prize:** ${prize}
+🏆 **Winners:** ${winners}
+⏰ **Ends:** <t:${Math.floor(endTime / 1000)}:R>
+
+Click buttons below to participate!
+        `)
+        .setFooter({ text: "BloxDen Giveaways" });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("gw_join")
+          .setLabel("Join")
+          .setStyle(ButtonStyle.Success)
+          .setEmoji("🎉"),
+
+        new ButtonBuilder()
+          .setCustomId("gw_leave")
+          .setLabel("Leave")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const msg = await interaction.channel.send({
+        embeds: [embed],
+        components: [row]
+      });
+
+      giveaways.set(msg.id, {
+        prize,
+        winners,
+        endTime,
+        channelId: interaction.channel.id,
+        participants: new Set()
+      });
+
+      setTimeout(() => endGiveaway(client, msg.id), ms);
+
+      return interaction.reply({ content: "✅ Giveaway started!", ephemeral: true });
+    }
+
+    // =========================
+    // END
+    // =========================
+    if (sub === "end") {
+
+      const id = interaction.options.getString("messageid");
+      await endGiveaway(client, id);
 
-/* ========================= */
-/* GIVEAWAY STORAGE */
-/* ========================= */
+      return interaction.reply({ content: "✅ Ended", ephemeral: true });
+    }
 
-client.giveaways = new Map();
+    // =========================
+    // REROLL
+    // =========================
+    if (sub === "reroll") {
 
-/* ========================= */
-/* TIME PARSER */
-/* ========================= */
+      const id = interaction.options.getString("messageid");
 
-function parseTime(time) {
+      const g = giveaways.get(id);
+      if (!g) return interaction.reply({ content: "❌ Not found", ephemeral: true });
 
-const match =
-time.match(/^(\d+)(s|m|h|d)$/);
+      const users = [...g.participants];
+      if (!users.length) return interaction.reply({ content: "❌ No participants", ephemeral: true });
 
-if (!match) return null;
+      const winner = users[Math.floor(Math.random() * users.length)];
 
-const value = parseInt(match[1]);
+      return interaction.reply(`🎉 New Winner: <@${winner}>`);
+    }
+  }
+};
 
-const unit = match[2];
+// =========================
+// BUTTON SYSTEM (IMPORTANT)
+// =========================
+module.exports.buttonHandler = async (interaction) => {
 
-switch (unit) {
+  if (!interaction.isButton()) return;
 
-case "s":
-return value * 1000;
+  const g = giveaways.get(interaction.message.id);
+  if (!g) return;
 
-case "m":
-return value * 60 * 1000;
+  // JOIN
+  if (interaction.customId === "gw_join") {
+    g.participants.add(interaction.user.id);
 
-case "h":
-return value * 60 * 60 * 1000;
-
-case "d":
-return value * 24 * 60 * 60 * 1000;
-
-default:
-return null;
-
-}
-
-}
-
-/* ========================= */
-/* FORMAT TIME */
-/* ========================= */
-
-function formatTime(ms) {
-
-const seconds =
-Math.floor(ms / 1000);
-
-const minutes =
-Math.floor(seconds / 60);
-
-const hours =
-Math.floor(minutes / 60);
-
-const days =
-Math.floor(hours / 24);
-
-if (days > 0) return `${days}d`;
-if (hours > 0) return `${hours}h`;
-if (minutes > 0) return `${minutes}m`;
-
-return `${seconds}s`;
-
-}
-
-/* ========================= */
-/* INTERACTION EVENT */
-/* ========================= */
-
-client.on("interactionCreate", async interaction => {
-
-try {
-
-/* ========================= */
-/* SLASH COMMANDS */
-/* ========================= */
-
-if (interaction.isChatInputCommand()) {
-
-/* ========================= */
-/* CREATE GIVEAWAY */
-/* ========================= */
-
-if (interaction.commandName === "giveaway") {
-
-const prize =
-interaction.options.getString("prize");
-
-const duration =
-interaction.options.getString("duration");
-
-const winners =
-interaction.options.getInteger("winners");
-
-const ms =
-parseTime(duration);
-
-if (!ms) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Invalid Duration")
-.setDescription(
-"Use formats like:\n`10s` `5m` `1h` `1d`"
-)
-],
-ephemeral: true
-});
-
-}
-
-const endTime =
-Date.now() + ms;
-
-const button =
-new ButtonBuilder()
-.setCustomId("giveaway_join")
-.setLabel("🎉 Join (0)")
-.setStyle(ButtonStyle.Success);
-
-const row =
-new ActionRowBuilder()
-.addComponents(button);
-
-const embed =
-new EmbedBuilder()
-.setColor("#5865F2")
-.setTitle("🎉 BloxDen Giveaway")
-.setThumbnail(
-client.user.displayAvatarURL()
-)
-.setDescription(
-`🏆 **Prize**
-${prize}
-
-👑 **Winner(s)**
-${winners}
-
-🎟️ **Entries**
-0
-
-⏰ **Ends**
-<t:${Math.floor(endTime / 1000)}:R>
-
-🎊 Click the button below to enter!`
-)
-.addFields(
-{
-name: "📢 Hosted By",
-value: `${interaction.user}`,
-inline: true
-}
-)
-.setFooter({
-text: "BloxDen Giveaway System"
-})
-.setTimestamp();
-
-const msg =
-await interaction.reply({
-embeds: [embed],
-components: [row],
-fetchReply: true
-});
-
-client.giveaways.set(msg.id, {
-users: [],
-prize,
-winners,
-ended: false,
-messageId: msg.id,
-channelId: interaction.channel.id
-});
-
-setTimeout(async () => {
-
-const data =
-client.giveaways.get(msg.id);
-
-if (!data || data.ended)
-return;
-
-data.ended = true;
-
-const disabledButton =
-new ButtonBuilder()
-.setCustomId("giveaway_ended")
-.setLabel(
-`🎉 Entries (${data.users.length})`
-)
-.setStyle(ButtonStyle.Secondary)
-.setDisabled(true);
-
-await msg.edit({
-components: [
-new ActionRowBuilder()
-.addComponents(disabledButton)
-]
-});
-
-if (
-data.users.length === 0
-) {
-
-const noWinnerEmbed =
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Ended")
-.setDescription(
-`🏆 Prize
-
-${prize}
-
-No one joined the giveaway.`
-)
-.setTimestamp();
-
-return interaction.channel.send({
-embeds: [noWinnerEmbed]
-});
-
-}
-
-const shuffled =
-[...data.users].sort(
-() => 0.5 - Math.random()
-);
-
-const selected =
-shuffled.slice(
-0,
-Math.min(
-data.winners,
-data.users.length
-)
-);
-
-const winnerEmbed =
-new EmbedBuilder()
-.setColor("#57F287")
-.setTitle("🎉 Giveaway Ended")
-.setDescription(
-`🏆 **Prize**
-${prize}
-
-🎊 **Winner(s)**
-
-${selected.map(
-u => `<@${u}>`
-).join("\n")}
-
-👥 **Entries**
-${data.users.length}`
-)
-.setFooter({
-text: "Congratulations!"
-})
-.setTimestamp();
-
-interaction.channel.send({
-content:
-selected.map(
-u => `<@${u}>`
-).join(" "),
-embeds: [winnerEmbed]
-});
-
-}, ms);
-
+    return interaction.reply({
+      content: "🎉 You joined the giveaway!",
+      ephemeral: true
+    });
   }
 
-/* ========================= */
-/* REROLL */
-/* ========================= */
+  // LEAVE
+  if (interaction.customId === "gw_leave") {
+    g.participants.delete(interaction.user.id);
 
-if (interaction.commandName === "reroll") {
+    return interaction.reply({
+      content: "❌ You left the giveaway",
+      ephemeral: true
+    });
+  }
+};
 
-const messageId =
-interaction.options.getString(
-"messageid"
-);
+// =========================
+// END GIVEAWAY
+// =========================
+async function endGiveaway(client, messageId) {
 
-const data =
-client.giveaways.get(messageId);
+  const g = giveaways.get(messageId);
+  if (!g) return;
 
-if (!data) {
+  const channel = await client.channels.fetch(g.channelId);
+  const msg = await channel.messages.fetch(messageId).catch(() => null);
+  if (!msg) return;
 
-return interaction.reply({
-content:
-"❌ Giveaway not found",
-ephemeral: true
-});
+  const users = [...g.participants];
 
+  if (users.length === 0) {
+    return channel.send("❌ No participants in giveaway.");
+  }
+
+  const winners = [];
+
+  for (let i = 0; i < g.winners; i++) {
+    const w = users[Math.floor(Math.random() * users.length)];
+    winners.push(w);
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("🎉 GIVEAWAY ENDED")
+    .setColor("#a855f7")
+    .setDescription(`
+💎 **Prize:** ${g.prize}
+
+🏆 **Winner(s):**
+${winners.map(w => `<@${w}>`).join("\n")}
+    `);
+
+  channel.send({ embeds: [embed] });
+
+  giveaways.delete(messageId);
 }
 
-if (data.users.length === 0) {
+// =========================
+// TIME PARSER
+// =========================
+function parseTime(str) {
+  const match = str.match(/(\d+)(s|m|h)/);
+  if (!match) return null;
 
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ No Participants")
-.setDescription(
-"No one joined this giveaway."
-)
-],
-ephemeral: true
-});
+  const num = parseInt(match[1]);
+  const type = match[2];
 
-}
-
-const winner =
-data.users[
-Math.floor(
-Math.random() *
-data.users.length
-)
-];
-
-const rerollEmbed =
-new EmbedBuilder()
-.setColor("#57F287")
-.setTitle("🔄 Giveaway Rerolled")
-.setDescription(
-`🎉 New Winner
-
-<@${winner}>
-
-🏆 Prize
-**${data.prize}**`
-)
-.setFooter({
-text: `Message ID: ${messageId}`
-})
-.setTimestamp();
-
-return interaction.reply({
-embeds: [rerollEmbed]
-});
-
-}
-
-/* ========================= */
-/* END GIVEAWAY COMMAND */
-/* ========================= */
-
-if (
-interaction.commandName === "endgiveaway"
-) {
-
-const messageId =
-interaction.options.getString(
-"messageid"
-);
-
-const data =
-client.giveaways.get(messageId);
-
-if (!data) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Not Found")
-.setDescription(
-"No giveaway exists with that Message ID."
-)
-],
-ephemeral: true
-});
-
-}
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Not Found")
-.setDescription(
-"No giveaway exists with that Message ID."
-)
-],
-ephemeral: true
-});
-
-}
-
-data.ended = true;
-
-if (data.users.length === 0) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Ended")
-.setDescription(
-"No one joined this giveaway."
-)
-]
-});
-
-}
-
-const shuffled =
-data.users.sort(
-() => 0.5 - Math.random()
-);
-
-const selected =
-shuffled.slice(0, data.winners);
-
-const endEmbed =
-new EmbedBuilder()
-.setColor("#5865F2")
-.setTitle("🎉 Giveaway Ended")
-.setDescription(
-`🏆 Prize
-
-**${data.prize}**
-
-🎊 Winner(s)
-
-${selected.map(
-u => `<@${u}>`
-).join("\n")}
-
-👥 Entries
-
-**${data.users.length}**`
-)
-.setFooter({
-text: "BloxDen Giveaway System"
-})
-.setTimestamp();
-
-return interaction.reply({
-embeds: [endEmbed]
-});
-
-}
-
-}
-
-/* ========================= */
-/* BUTTONS */
-/* ========================= */
-
-if (interaction.isButton()) {
-
-/* ========================= */
-/* JOIN GIVEAWAY */
-/* ========================= */
-
-if (interaction.customId === "giveaway_join") {
-
-const giveaway =
-client.giveaways.get(
-interaction.message.id
-);
-
-if (!giveaway) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Not Found")
-.setDescription(
-"This giveaway no longer exists."
-)
-],
-ephemeral: true
-});
-
-}
-
-if (giveaway.ended) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#ED4245")
-.setTitle("❌ Giveaway Ended")
-.setDescription(
-"This giveaway has already ended."
-)
-],
-ephemeral: true
-});
-
-}
-
-if (
-giveaway.users.includes(
-interaction.user.id
-)
-) {
-
-return interaction.reply({
-embeds: [
-new EmbedBuilder()
-.setColor("#FEE75C")
-.setTitle("⚠️ Already Joined")
-.setDescription(
-"You have already joined this giveaway."
-)
-],
-ephemeral: true
-});
-
-}
-
-giveaway.users.push(
-interaction.user.id
-);
-
-/* UPDATE BUTTON */
-
-const button =
-new ButtonBuilder()
-.setCustomId("giveaway_join")
-.setLabel(
-`🎉 Join (${giveaway.users.length})`
-)
-.setStyle(ButtonStyle.Success);
-
-const row =
-new ActionRowBuilder()
-.addComponents(button);
-
-await interaction.message.edit({
-components: [row]
-});
-
-/* SUCCESS EMBED */
-
-const embed =
-new EmbedBuilder()
-.setColor("#57F287")
-.setTitle("🎉 Giveaway Joined")
-.setThumbnail(
-interaction.user.displayAvatarURL()
-)
-.setDescription(
-`You successfully entered the giveaway!
-
-🏆 Prize
-**${giveaway.prize}**
-
-🎟️ Total Entries
-**${giveaway.users.length}**
-
-🍀 Good Luck!`
-)
-.setFooter({
-text: "BloxDen Giveaway System"
-})
-.setTimestamp();
-
-return interaction.reply({
-embeds: [embed],
-ephemeral: true
-});
-
+  if (type === "s") return num * 1000;
+  if (type === "m") return num * 60 * 1000;
+  if (type === "h") return num * 60 * 60 * 1000;
 }
