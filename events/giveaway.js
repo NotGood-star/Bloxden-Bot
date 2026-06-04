@@ -1,208 +1,174 @@
 const {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionsBitField
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    SlashCommandBuilder,
 } = require("discord.js");
 
-const fs = require("fs");
+module.exports = (client) => {
 
-const DB = "./giveaways.json";
+    // =========================
+    // GIVEAWAY STORAGE
+    // =========================
+    client.giveaways = new Map();
 
-// =========================
-// LOAD DB
-// =========================
-let data = fs.existsSync(DB)
-  ? JSON.parse(fs.readFileSync(DB))
-  : {};
+    // =========================
+    // START GIVEAWAY COMMAND
+    // =========================
+    client.on("interactionCreate", async (interaction) => {
 
-function save() {
-  fs.writeFileSync(DB, JSON.stringify(data, null, 2));
-}
+        if (!interaction.isChatInputCommand()) return;
 
-// =========================
-// PARSE TIME
-// =========================
-function parseTime(t) {
-  const m = t.match(/(\d+)(s|m|h)/);
-  if (!m) return null;
+        // =========================
+        // /gstart
+        // =========================
+        if (interaction.commandName === "gstart") {
 
-  const n = parseInt(m[1]);
-  if (m[2] === "s") return n * 1000;
-  if (m[2] === "m") return n * 60000;
-  if (m[2] === "h") return n * 3600000;
-}
+            const prize = interaction.options.getString("prize");
+            const duration = interaction.options.getInteger("duration"); // in minutes
+            const winnersCount = interaction.options.getInteger("winners") || 1;
 
-// =========================
-// MAIN COMMAND
-// =========================
-module.exports = {
+            const endTime = Date.now() + duration * 60000;
 
-  data: new SlashCommandBuilder()
-    .setName("giveaway")
-    .setDescription("🎉 Pro Giveaway System")
-    .addSubcommand(s =>
-      s.setName("start")
-        .addStringOption(o => o.setName("duration").setRequired(true))
-        .addIntegerOption(o => o.setName("winners").setRequired(true))
-        .addStringOption(o => o.setName("prize").setRequired(true))
-    )
-    .addSubcommand(s =>
-      s.setName("end")
-        .addStringOption(o => o.setName("id").setRequired(true))
-    )
-    .addSubcommand(s =>
-      s.setName("reroll")
-        .addStringOption(o => o.setName("id").setRequired(true))
-    ),
+            const giveawayId = Date.now().toString();
 
-  // =========================
-  // EXECUTE
-  // =========================
-  async execute(interaction, client) {
+            const embed = new EmbedBuilder()
+                .setTitle("🎉 GIVEAWAY STARTED 🎉")
+                .setDescription(
+                    `**Prize:** ${prize}\n` +
+                    `**Winners:** ${winnersCount}\n` +
+                    `**Ends In:** <t:${Math.floor(endTime / 1000)}:R>\n\n` +
+                    `Click button below to enter!`
+                )
+                .setColor("Gold")
+                .setFooter({ text: `Giveaway ID: ${giveawayId}` });
 
-    const sub = interaction.options.getSubcommand();
+            const button = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`join_${giveawayId}`)
+                    .setLabel("🎉 Join Giveaway")
+                    .setStyle(ButtonStyle.Success)
+            );
 
-    // START
-    if (sub === "start") {
+            const msg = await interaction.reply({
+                embeds: [embed],
+                components: [button],
+                fetchReply: true
+            });
 
-      if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
-        return interaction.reply({ content: "❌ No permission", ephemeral: true });
+            client.giveaways.set(giveawayId, {
+                messageId: msg.id,
+                channelId: interaction.channel.id,
+                guildId: interaction.guild.id,
+                prize,
+                winnersCount,
+                endTime,
+                participants: []
+            });
 
-      const duration = interaction.options.getString("duration");
-      const winners = interaction.options.getInteger("winners");
-      const prize = interaction.options.getString("prize");
+            // Auto end system
+            setTimeout(() => endGiveaway(client, giveawayId), duration * 60000);
+        }
 
-      const ms = parseTime(duration);
-      const end = Date.now() + ms;
+        // =========================
+        // /gend
+        // =========================
+        if (interaction.commandName === "gend") {
 
-      const embed = new EmbedBuilder()
-        .setTitle("🎉 GIVEAWAY")
-        .setColor("#a855f7")
-        .setDescription(`
-💎 **Prize:** ${prize}
-🏆 **Winners:** ${winners}
-⏰ **Ends:** <t:${Math.floor(end / 1000)}:R>
+            const id = interaction.options.getString("id");
+            const data = client.giveaways.get(id);
 
-Click button below to join!
-        `);
+            if (!data) {
+                return interaction.reply({ content: "❌ Giveaway not found.", ephemeral: true });
+            }
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("gw_join")
-          .setLabel("Join")
-          .setStyle(ButtonStyle.Success),
+            await endGiveaway(client, id);
+            interaction.reply({ content: "✅ Giveaway ended!", ephemeral: true });
+        }
 
-        new ButtonBuilder()
-          .setCustomId("gw_leave")
-          .setLabel("Leave")
-          .setStyle(ButtonStyle.Danger)
-      );
+        // =========================
+        // /greroll
+        // =========================
+        if (interaction.commandName === "greroll") {
 
-      const msg = await interaction.channel.send({
-        embeds: [embed],
-        components: [row]
-      });
+            const id = interaction.options.getString("id");
+            const data = client.giveaways.get(id);
 
-      data[msg.id] = {
-        channelId: interaction.channel.id,
-        prize,
-        winners,
-        end,
-        users: []
-      };
+            if (!data || data.participants.length === 0) {
+                return interaction.reply({ content: "❌ No participants found.", ephemeral: true });
+            }
 
-      save();
+            const winner = data.participants[
+                Math.floor(Math.random() * data.participants.length)
+            ];
 
-      setTimeout(() => endGiveaway(client, msg.id), ms);
+            const channel = await client.channels.fetch(data.channelId);
 
-      return interaction.reply({ content: "✅ Giveaway started!", ephemeral: true });
+            channel.send(`🔁 Reroll Winner: <@${winner}> for **${data.prize}**`);
+            interaction.reply({ content: "🔁 Rerolled successfully!", ephemeral: true });
+        }
+    });
+
+    // =========================
+    // BUTTON HANDLER
+    // =========================
+    client.on("interactionCreate", async (interaction) => {
+
+        if (!interaction.isButton()) return;
+
+        const id = interaction.customId.split("_")[1];
+        const giveaway = client.giveaways.get(id);
+
+        if (!giveaway) {
+            return interaction.reply({ content: "❌ Giveaway ended.", ephemeral: true });
+        }
+
+        if (giveaway.participants.includes(interaction.user.id)) {
+            return interaction.reply({ content: "⚠️ You already joined!", ephemeral: true });
+        }
+
+        giveaway.participants.push(interaction.user.id);
+
+        interaction.reply({ content: "🎉 You joined the giveaway!", ephemeral: true });
+    });
+
+    // =========================
+    // END GIVEAWAY FUNCTION
+    // =========================
+    async function endGiveaway(client, id) {
+
+        const data = client.giveaways.get(id);
+        if (!data) return;
+
+        const channel = await client.channels.fetch(data.channelId);
+
+        let winnerText = "No participants";
+
+        if (data.participants.length > 0) {
+
+            const winners = [];
+
+            for (let i = 0; i < data.winnersCount; i++) {
+                const random = data.participants[
+                    Math.floor(Math.random() * data.participants.length)
+                ];
+                winners.push(`<@${random}>`);
+            }
+
+            winnerText = winners.join(", ");
+        }
+
+        const endEmbed = new EmbedBuilder()
+            .setTitle("🏁 GIVEAWAY ENDED")
+            .setDescription(
+                `**Prize:** ${data.prize}\n` +
+                `**Winners:** ${winnerText}`
+            )
+            .setColor("Red");
+
+        channel.send({ embeds: [endEmbed] });
+
+        client.giveaways.delete(id);
     }
-
-    // END
-    if (sub === "end") {
-      await endGiveaway(client, interaction.options.getString("id"));
-      return interaction.reply({ content: "✅ Ended", ephemeral: true });
-    }
-
-    // REROLL
-    if (sub === "reroll") {
-
-      const id = interaction.options.getString("id");
-      const g = data[id];
-
-      if (!g || !g.users.length)
-        return interaction.reply({ content: "❌ No users", ephemeral: true });
-
-      const winner = g.users[Math.floor(Math.random() * g.users.length)];
-
-      return interaction.reply(`🎉 New Winner: <@${winner}>`);
-    }
-  },
-
-  // =========================
-  // BUTTONS
-  // =========================
-  async buttons(interaction) {
-
-    const g = data[interaction.message.id];
-    if (!g) return;
-
-    if (interaction.customId === "gw_join") {
-
-      if (!g.users.includes(interaction.user.id)) {
-        g.users.push(interaction.user.id);
-        save();
-      }
-
-      return interaction.reply({ content: "🎉 Joined!", ephemeral: true });
-    }
-
-    if (interaction.customId === "gw_leave") {
-
-      g.users = g.users.filter(u => u !== interaction.user.id);
-      save();
-
-      return interaction.reply({ content: "❌ Left", ephemeral: true });
-    }
-  }
 };
-
-// =========================
-// END GIVEAWAY
-// =========================
-async function endGiveaway(client, id) {
-
-  const g = data[id];
-  if (!g) return;
-
-  const channel = await client.channels.fetch(g.channelId);
-  const msg = await channel.messages.fetch(id).catch(() => null);
-
-  if (!msg) return;
-
-  const users = g.users;
-
-  if (!users.length)
-    return channel.send("❌ No participants");
-
-  const winners = [];
-
-  for (let i = 0; i < g.winners; i++) {
-    winners.push(users[Math.floor(Math.random() * users.length)]);
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle("🎉 GIVEAWAY ENDED")
-    .setColor("#a855f7")
-    .setDescription(
-      `🏆 Winners:\n${winners.map(w => `<@${w}>`).join("\n")}`
-    );
-
-  channel.send({ embeds: [embed] });
-
-  delete data[id];
-  save();
-}
