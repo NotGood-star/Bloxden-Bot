@@ -375,25 +375,49 @@ new SlashCommandBuilder()
 /* ========================= */
 
 new SlashCommandBuilder()
-.setName("giveaway")
-.setDescription("Start giveaway")
+.setName("gstart")
+.setDescription("Start a giveaway")
 .addStringOption(option =>
-option
-.setName("prize")
-.setDescription("Prize")
-.setRequired(true)
-)
-.addStringOption(option =>
-option
-.setName("duration")
-.setDescription("Example: 10s, 5m, 1h")
-.setRequired(true)
+    option.setName("prize")
+    .setDescription("Prize")
+    .setRequired(true)
 )
 .addIntegerOption(option =>
-option
-.setName("winners")
-.setDescription("Winner count")
-.setRequired(true)
+    option.setName("time")
+    .setDescription("Time in minutes")
+    .setRequired(true)
+)
+.addIntegerOption(option =>
+    option.setName("winners")
+    .setDescription("Number of winners")
+    .setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("gend")
+.setDescription("End a giveaway")
+.addStringOption(option =>
+    option.setName("id")
+    .setDescription("Giveaway ID")
+    .setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("greroll")
+.setDescription("Reroll giveaway winner")
+.addStringOption(option =>
+    option.setName("id")
+    .setDescription("Giveaway ID")
+    .setRequired(true)
+),
+
+new SlashCommandBuilder()
+.setName("gleaderboard")
+.setDescription("View giveaway leaderboard")
+.addStringOption(option =>
+    option.setName("id")
+    .setDescription("Giveaway ID")
+    .setRequired(true)
 ),
 
 /* ========================= */
