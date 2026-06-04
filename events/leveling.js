@@ -16,7 +16,7 @@ if (fs.existsSync("levels.json")) {
 }
 
 /* ========================= */
-/* SAVE SYSTEM (OPTIMIZED) */
+/* SAVE SYSTEM */
 /* ========================= */
 
 let saving = false;
@@ -29,33 +29,25 @@ function saveData() {
     setTimeout(() => {
         fs.writeFileSync("levels.json", JSON.stringify(data, null, 2));
         saving = false;
-    }, 5000);
+    }, 4000);
 }
 
 /* ========================= */
-/* CREATE USER */
+/* CREATE USER / GUILD */
 /* ========================= */
 
 function createUser(guildId, userId) {
-
     if (!data.users[guildId]) data.users[guildId] = {};
     if (!data.users[guildId][userId]) {
-
         data.users[guildId][userId] = {
             xp: 0,
             level: 1,
             lastMessage: 0
         };
-
     }
 }
 
-/* ========================= */
-/* CREATE GUILD */
-/* ========================= */
-
 function createGuild(guildId) {
-
     if (!data.guilds[guildId]) {
         data.guilds[guildId] = {
             levelChannel: null
@@ -64,10 +56,10 @@ function createGuild(guildId) {
 }
 
 /* ========================= */
-/* XP CALC (ARCANE STYLE CURVE) */
+/* XP CALC */
 /* ========================= */
 
-function requiredXP(level) {
+function neededXP(level) {
     return level * level * 100;
 }
 
@@ -87,44 +79,36 @@ client.on("messageCreate", async (message) => {
 
     const user = data.users[guildId][userId];
 
-    /* ========================= */
-    /* COOLDOWN (ANTI SPAM) */
-    /* ========================= */
-
+    /* COOLDOWN */
     const now = Date.now();
-    if (now - user.lastMessage < 60000) return; // 60 sec cooldown
+    if (now - user.lastMessage < 60000) return;
 
     user.lastMessage = now;
 
-    /* ========================= */
     /* XP GAIN */
-    /* ========================= */
+    const gain = Math.floor(Math.random() * 15) + 10;
+    user.xp += gain;
 
-    const xpGain = Math.floor(Math.random() * 15) + 10;
-    user.xp += xpGain;
+    /* LEVEL CHECK */
+    const req = neededXP(user.level);
 
-    /* ========================= */
-    /* LEVEL UP CHECK */
-    /* ========================= */
-
-    const needed = requiredXP(user.level);
-
-    if (user.xp >= needed) {
+    if (user.xp >= req) {
 
         user.level++;
         user.xp = 0;
 
         const channelId = data.guilds[guildId].levelChannel;
-        const levelChannel = message.guild.channels.cache.get(channelId);
+        const channel = message.guild.channels.cache.get(channelId);
 
         const embed = {
             title: "🎉 Level Up!",
             description: `${message.author} reached **Level ${user.level}**`,
-            color: 0x00ff00
+            color: 0x2ecc71,
+            timestamp: new Date()
         };
 
-        if (levelChannel) {
-            levelChannel.send({ embeds: [embed] });
+        if (channel) {
+            channel.send({ embeds: [embed] });
         } else {
             message.channel.send({ embeds: [embed] });
         }
@@ -134,7 +118,7 @@ client.on("messageCreate", async (message) => {
 });
 
 /* ========================= */
-/* INTERACTIONS */
+/* COMMANDS */
 /* ========================= */
 
 client.on("interactionCreate", async (interaction) => {
@@ -152,43 +136,31 @@ client.on("interactionCreate", async (interaction) => {
     try {
 
         /* ========================= */
-        /* RANK COMMAND (ARCANE STYLE CARD) */
+        /* RANK */
         /* ========================= */
 
         if (interaction.commandName === "rank") {
 
-            const needed = requiredXP(user.level);
+            const req = neededXP(user.level);
 
-            const embed = {
-                title: `🏆 ${interaction.user.username}'s Rank Card`,
-                color: 0x00c3ff,
-                fields: [
+            return interaction.reply({
+                embeds: [
                     {
-                        name: "🎖 Level",
-                        value: `${user.level}`,
-                        inline: true
-                    },
-                    {
-                        name: "⭐ XP",
-                        value: `${user.xp}`,
-                        inline: true
-                    },
-                    {
-                        name: "📊 Progress",
-                        value: `${user.xp} / ${needed}`,
-                        inline: false
+                        title: `${interaction.user.username}'s Profile`,
+                        color: 0x3498db,
+                        fields: [
+                            { name: "Level", value: `${user.level}`, inline: true },
+                            { name: "XP", value: `${user.xp}`, inline: true },
+                            { name: "Required XP", value: `${req}`, inline: true }
+                        ],
+                        timestamp: new Date()
                     }
-                ],
-                footer: {
-                    text: "Arcane Style Level System"
-                }
-            };
-
-            return interaction.reply({ embeds: [embed] });
+                ]
+            });
         }
 
         /* ========================= */
-        /* LEADERBOARD (TOP 10 ARCANE STYLE) */
+        /* LEADERBOARD */
         /* ========================= */
 
         if (interaction.commandName === "leaderboard") {
@@ -213,16 +185,16 @@ client.on("interactionCreate", async (interaction) => {
                 desc += `**${i + 1}.** ${name} — Level ${sorted[i][1].level}\n`;
             }
 
-            const embed = {
-                title: "🏆 BloxDen Leaderboard",
-                description: desc || "No data available",
-                color: 0xffd700,
-                footer: {
-                    text: "Top 10 Players"
-                }
-            };
-
-            return interaction.reply({ embeds: [embed] });
+            return interaction.reply({
+                embeds: [
+                    {
+                        title: "🏆 Server Leaderboard",
+                        description: desc || "No data available",
+                        color: 0xf1c40f,
+                        footer: { text: "Top 10 Players" }
+                    }
+                ]
+            });
         }
 
         /* ========================= */
@@ -233,7 +205,7 @@ client.on("interactionCreate", async (interaction) => {
 
             if (!interaction.member.permissions.has("Administrator")) {
                 return interaction.reply({
-                    content: "❌ You need Administrator permission",
+                    content: "❌ Admin permission required",
                     ephemeral: true
                 });
             }
@@ -244,7 +216,15 @@ client.on("interactionCreate", async (interaction) => {
 
             saveData();
 
-            return interaction.reply(`✅ Level channel set to ${channel}`);
+            return interaction.reply({
+                embeds: [
+                    {
+                        title: "✅ Level Channel Updated",
+                        description: `Level-up messages will now appear in ${channel}`,
+                        color: 0x00ff99
+                    }
+                ]
+            });
         }
 
         /* ========================= */
@@ -255,7 +235,7 @@ client.on("interactionCreate", async (interaction) => {
 
             if (!interaction.member.permissions.has("Administrator")) {
                 return interaction.reply({
-                    content: "❌ You need Administrator permission",
+                    content: "❌ Admin permission required",
                     ephemeral: true
                 });
             }
@@ -269,7 +249,15 @@ client.on("interactionCreate", async (interaction) => {
 
             saveData();
 
-            return interaction.reply(`✅ Added ${amount} XP to ${target.username}`);
+            return interaction.reply({
+                embeds: [
+                    {
+                        title: "➕ XP Added",
+                        description: `Added **${amount} XP** to ${target}`,
+                        color: 0x2ecc71
+                    }
+                ]
+            });
         }
 
         /* ========================= */
@@ -280,7 +268,7 @@ client.on("interactionCreate", async (interaction) => {
 
             if (!interaction.member.permissions.has("Administrator")) {
                 return interaction.reply({
-                    content: "❌ You need Administrator permission",
+                    content: "❌ Admin permission required",
                     ephemeral: true
                 });
             }
@@ -298,13 +286,22 @@ client.on("interactionCreate", async (interaction) => {
 
             saveData();
 
-            return interaction.reply(`✅ Removed ${amount} XP from ${target.username}`);
+            return interaction.reply({
+                embeds: [
+                    {
+                        title: "➖ XP Removed",
+                        description: `Removed **${amount} XP** from ${target}`,
+                        color: 0xe74c3c
+                    }
+                ]
+            });
         }
 
     } catch (err) {
         console.error(err);
+
         return interaction.reply({
-            content: "❌ Something went wrong in leveling system",
+            content: "❌ Level system error occurred",
             ephemeral: true
         });
     }
