@@ -141,12 +141,14 @@ client.on("interactionCreate", async (interaction) => {
 
         if (interaction.commandName === "rank") {
 
-const guildId = interaction.guild.id;
+try {
+
 const userId = interaction.user.id;
 
-if (!levels.users?.[userId]) {
-levels.users = levels.users || {};
-levels.users[userId] = { xp: 0, level: 1 };
+// ensure structure exists
+if (!levels.users) levels.users = {};
+if (!levels.users[userId]) {
+    levels.users[userId] = { xp: 0, level: 1 };
 }
 
 const data = levels.users[userId];
@@ -154,40 +156,31 @@ const data = levels.users[userId];
 const neededXP = data.level * 100;
 
 return interaction.reply({
-embeds: [
-{
+embeds: [{
 title: `📊 ${interaction.user.username} Rank`,
 color: 0x3498db,
 fields: [
-{
-name: "🎖 Level",
-value: `${data.level}`,
-inline: true
-},
-{
-name: "⭐ XP",
-value: `${data.xp}`,
-inline: true
-},
-{
-name: "📈 Progress",
-value: `${data.xp} / ${neededXP}`,
-inline: true
-}
+{ name: "🎖 Level", value: `${data.level}`, inline: true },
+{ name: "⭐ XP", value: `${data.xp}`, inline: true },
+{ name: "📈 Needed", value: `${neededXP}`, inline: true }
 ],
 thumbnail: {
-url: interaction.user.displayAvatarURL({ dynamic: true })
-},
-footer: {
-text: "BloxDen Level System"
+url: interaction.user.displayAvatarURL()
 },
 timestamp: new Date()
-}
-]
+}]
 });
 
+} catch (err) {
+console.error("RANK ERROR:", err);
+
+return interaction.reply({
+content: "❌ Rank command crashed. Check console.",
+ephemeral: true
+});
 }
 
+        }
         /* ========================= */
         /* LEADERBOARD */
         /* ========================= */
