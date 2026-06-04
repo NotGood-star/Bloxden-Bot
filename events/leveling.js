@@ -141,23 +141,52 @@ client.on("interactionCreate", async (interaction) => {
 
         if (interaction.commandName === "rank") {
 
-            const req = neededXP(user.level);
+const guildId = interaction.guild.id;
+const userId = interaction.user.id;
 
-            return interaction.reply({
-                embeds: [
-                    {
-                        title: `${interaction.user.username}'s Profile`,
-                        color: 0x3498db,
-                        fields: [
-                            { name: "Level", value: `${user.level}`, inline: true },
-                            { name: "XP", value: `${user.xp}`, inline: true },
-                            { name: "Required XP", value: `${req}`, inline: true }
-                        ],
-                        timestamp: new Date()
-                    }
-                ]
-            });
-        }
+if (!levels.users?.[userId]) {
+levels.users = levels.users || {};
+levels.users[userId] = { xp: 0, level: 1 };
+}
+
+const data = levels.users[userId];
+
+const neededXP = data.level * 100;
+
+return interaction.reply({
+embeds: [
+{
+title: `📊 ${interaction.user.username} Rank`,
+color: 0x3498db,
+fields: [
+{
+name: "🎖 Level",
+value: `${data.level}`,
+inline: true
+},
+{
+name: "⭐ XP",
+value: `${data.xp}`,
+inline: true
+},
+{
+name: "📈 Progress",
+value: `${data.xp} / ${neededXP}`,
+inline: true
+}
+],
+thumbnail: {
+url: interaction.user.displayAvatarURL({ dynamic: true })
+},
+footer: {
+text: "BloxDen Level System"
+},
+timestamp: new Date()
+}
+]
+});
+
+}
 
         /* ========================= */
         /* LEADERBOARD */
