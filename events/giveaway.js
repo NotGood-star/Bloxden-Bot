@@ -1,207 +1,453 @@
 const {
-    EmbedBuilder,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits
 } = require("discord.js");
+
+const fs = require("fs");
 
 module.exports = (client) => {
 
-    // =========================
-    // GIVEAWAY STORAGE
-    // =========================
-    client.giveaways = new Map();
+const FILE = "./giveaways.json";
 
-    // =========================
-    // INTERACTIONS
-    // =========================
-    client.on("interactionCreate", async (interaction) => {
+if (!fs.existsSync(FILE)) {
+  fs.writeFileSync(FILE, JSON.stringify({}));
+}
 
-        // =========================
-        // SLASH COMMANDS
-        // =========================
-        if (interaction.isChatInputCommand()) {
+function loadData() {
+  return JSON.parse(fs.readFileSync(FILE));
+}
 
-            const { commandName } = interaction;
+function saveData(data) {
+  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+}
 
-            // -------------------------
-            // /gstart
-            // -------------------------
-            if (commandName === "gstart") {
+function parseTime(input) {
+  const match = input.match(/^(\d+)(s|m|h|d)$/i);
+  if (!match) return null;
 
-                const prize = interaction.options.getString("prize");
-                const time = interaction.options.getInteger("time"); // minutes
-                const winnersCount = interaction.options.getInteger("winners") || 1;
+  const value = Number(match[1]);
 
-                const end = Date.now() + time * 60000;
-                const id = Date.now().toString();
+  switch (match[2].toLowerCase()) {
+    case "s": return value * 1000;
+    case "m": return value * 60000;
+    case "h": return value * 3600000;
+    case "d": return value * 86400000;
+  }
+}
 
-                const embed = new EmbedBuilder()
-                    .setTitle("🎉 GIVEAWAY LIVE 🎉")
-                    .setDescription(
-                        `🎁 **Prize:** ${prize}\n` +
-                        `🏆 **Winners:** ${winnersCount}\n` +
-                        `⏰ **Ends:** <t:${Math.floor(end / 1000)}:R>\n\n` +
-                        `Click 🎉 button to join!`
-                    )
-                    .setColor("Gold")
-                    .setFooter({ text: `Giveaway ID: ${id}` });
+async function endGiveaway(id) {
 
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`gw_join_${id}`)
-                        .setLabel("🎉 Join Giveaway")
-                        .setStyle(ButtonStyle.Success)
-                );
+  const giveaways = loadData();
+  const g = giveaways[id];
 
-                const msg = await interaction.reply({
-                    embeds: [embed],
-                    components: [row],
-                    fetchReply: true
-                });
+  if (!g || g.ended) return;
 
-                client.giveaways.set(id, {
-                    messageId: msg.id,
-                    channelId: interaction.channel.id,
-                    guildId: interaction.guild.id,
-                    prize,
-                    winnersCount,
-                    end,
-                    participants: []
-                });
+  g.ended = true;
 
-                setTimeout(() => endGiveaway(client, id), time * 60000);
-            }
+  const channel =
+    await client.channels.fetch(g.channelId).catch(() => null);
 
-            // -------------------------
-            // /gend
-            // -------------------------
-            if (commandName === "gend") {
+  if (!channel) return;
 
-                const id = interaction.options.getString("id");
-                const data = client.giveaways.get(id);
+  let winnersText = "No valid entries.";
 
-                if (!data) {
-                    return interaction.reply({ content: "❌ Giveaway not found!", ephemeral: true });
-                }
+  if (g.entries.length > 0) {
 
-                await endGiveaway(client, id);
-                return interaction.reply({ content: "🏁 Giveaway ended!", ephemeral: true });
-            }
+    const shuffled =
+      [...g.entries].sort(() => Math.random() - 0.5);
 
-            // -------------------------
-            // /greroll
-            // -------------------------
-            if (commandName === "greroll") {
+    const winners =
+      shuffled.slice(0, g.winners);
 
-                const id = interaction.options.getString("id");
-                const data = client.giveaways.get(id);
+    winnersText =
+      winners.map(id => `<@${id}>`).join(", ");
+  }
 
-                if (!data || data.participants.length === 0) {
-                    return interaction.reply({ content: "❌ No participants found!", ephemeral: true });
-                }
+  const embed = new EmbedBuilder()
+    .setColor("#57F287")
+    .setTitle("<a:gift:ID> Giveaway Ended")
+    .setDescription(
+`🏆 Prize: **${g.prize}**
 
-                const winner = data.participants[
-                    Math.floor(Math.random() * data.participants.length)
-                ];
+🎉 Winner(s):
+${winnersText}
 
-                const channel = await client.channels.fetch(data.channelId);
+👥 Entries: **${g.entries.length}**`
+    )
+    .setTimestamp();
 
-                channel.send(`🔁 New Winner (Reroll): <@${winner}> for **${data.prize}**`);
+  await channel.send({
+    embeds: [embed]
+  });
 
-                return interaction.reply({ content: "🔁 Rerolled successfully!", ephemeral: true });
-            }
+  saveData(giveaways);
+}
 
-            // -------------------------
-            // /gleaderboard
-            // -------------------------
-            if (commandName === "gleaderboard") {
+function scheduleGiveaway(id) {
 
-                const id = interaction.options.getString("id");
-                const data = client.giveaways.get(id);
+  const giveaways = loadData();
+  const g = giveaways[id];
 
-                if (!data) {
-                    return interaction.reply({ content: "❌ Giveaway not found!", ephemeral: true });
-                }
+  if (!g || g.ended) return;
 
-                if (data.participants.length === 0) {
-                    return interaction.reply({ content: "No participants yet.", ephemeral: true });
-                }
+  const remaining =
+    g.endsAt - Date.now();
 
-                // Simple leaderboard (top 10 random display order)
-                const list = data.participants.slice(0, 10);
+  if (remaining <= 0) {
+    endGiveaway(id);
+    return;
+  }
 
-                const embed = new EmbedBuilder()
-                    .setTitle("🏆 Giveaway Leaderboard")
-                    .setDescription(
-                        list.map((u, i) => `**${i + 1}.** <@${u}>`).join("\n")
-                    )
-                    .setColor("Blue");
+  setTimeout(() => {
+    endGiveaway(id);
+  }, remaining);
+}
 
-                return interaction.reply({ embeds: [embed], ephemeral: true });
-            }
-        }
+const giveaways = loadData();
 
-        // =========================
-        // BUTTON SYSTEM
-        // =========================
-        if (interaction.isButton()) {
+for (const id in giveaways) {
+  scheduleGiveaway(id);
+}
 
-            if (!interaction.customId.startsWith("gw_join_")) return;
+client.on("interactionCreate", async interaction => {
 
-            const id = interaction.customId.split("_")[2];
-            const data = client.giveaways.get(id);
+  if (interaction.isButton()) {
 
-            if (!data) {
-                return interaction.reply({ content: "❌ Giveaway ended.", ephemeral: true });
-            }
+    if (!interaction.customId.startsWith("giveaway_"))
+      return;
 
-            if (data.participants.includes(interaction.user.id)) {
-                return interaction.reply({ content: "⚠️ Already joined!", ephemeral: true });
-            }
+    const giveawayId =
+      interaction.customId.replace("giveaway_", "");
 
-            data.participants.push(interaction.user.id);
+    const giveaways = loadData();
+    const g = giveaways[giveawayId];
 
-            return interaction.reply({ content: "🎉 Joined successfully!", ephemeral: true });
-        }
+    if (!g || g.ended) {
+
+      return interaction.reply({
+        content: "❌ Giveaway ended.",
+        ephemeral: true
+      });
+
+    }
+
+    if (g.entries.includes(interaction.user.id)) {
+
+      return interaction.reply({
+        content: "⚠️ You already joined.",
+        ephemeral: true
+      });
+
+    }
+
+    g.entries.push(interaction.user.id);
+
+    saveData(giveaways);
+
+    return interaction.reply({
+      content: "🎉 Giveaway joined!",
+      ephemeral: true
     });
 
-    // =========================
-    // END GIVEAWAY FUNCTION
-    // =========================
-    async function endGiveaway(client, id) {
+  }
 
-        const data = client.giveaways.get(id);
-        if (!data) return;
+  if (!interaction.isChatInputCommand()) return;
 
-        const channel = await client.channels.fetch(data.channelId);
+  const admin =
+    interaction.memberPermissions.has(
+      PermissionFlagsBits.Administrator
+    );
 
-        let winnersText = "No participants";
+  const cmd = interaction.commandName;
 
-        if (data.participants.length > 0) {
+  if (
+    ["gstart","gend","greroll","gdelete"]
+    .includes(cmd) &&
+    !admin
+  ) {
 
-            const winners = [];
+    return interaction.reply({
+      content: "❌ Administrator only.",
+      ephemeral: true
+    });
 
-            for (let i = 0; i < data.winnersCount; i++) {
-                const pick = data.participants[
-                    Math.floor(Math.random() * data.participants.length)
-                ];
-                winners.push(`<@${pick}>`);
-            }
+  }
 
-            winnersText = winners.join(", ");
-        }
+  /* ===================== */
+  /* GSTART */
+  /* ===================== */
 
-        const embed = new EmbedBuilder()
-            .setTitle("🏁 GIVEAWAY ENDED")
-            .setDescription(
-                `🎁 **Prize:** ${data.prize}\n` +
-                `🏆 **Winners:** ${winnersText}`
-            )
-            .setColor("Red");
+  if (cmd === "gstart") {
 
-        channel.send({ embeds: [embed] });
+    const prize =
+      interaction.options.getString("prize");
 
-        client.giveaways.delete(id);
+    const duration =
+      interaction.options.getString("duration");
+
+    const winners =
+      interaction.options.getInteger("winners");
+
+    const ms = parseTime(duration);
+
+    if (!ms) {
+
+      return interaction.reply({
+        content:
+          "❌ Use 10s, 5m, 1h, 1d",
+        ephemeral: true
+      });
+
     }
-};
+
+    const giveawayId =
+      Date.now().toString();
+
+    const endTime =
+      Date.now() + ms;
+
+    const button =
+      new ButtonBuilder()
+      .setCustomId(
+        `giveaway_${giveawayId}`
+      )
+      .setLabel("🎉 Join Giveaway")
+      .setStyle(ButtonStyle.Success);
+
+    const row =
+      new ActionRowBuilder()
+      .addComponents(button);
+
+    const embed =
+      new EmbedBuilder()
+      .setColor("#5865F2")
+      .setTitle("<a:gift:ID> Giveaway")
+      .setDescription(
+`🏆 Prize: **${prize}**
+
+👑 Winners: **${winners}**
+
+⏰ Ends:
+<t:${Math.floor(endTime / 1000)}:R>
+
+🎟️ Entries: **0**`
+      )
+      .setFooter({
+        text:
+          `Hosted by ${interaction.user.username}`
+      });
+
+    const msg =
+      await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        fetchReply: true
+      });
+
+    const giveaways = loadData();
+
+    giveaways[giveawayId] = {
+      id: giveawayId,
+      prize,
+      winners,
+      channelId: interaction.channel.id,
+      messageId: msg.id,
+      entries: [],
+      ended: false,
+      endsAt: endTime
+    };
+
+    saveData(giveaways);
+
+    scheduleGiveaway(giveawayId);
+  }
+
+  /* ===================== */
+  /* GEND */
+  /* ===================== */
+
+  if (cmd === "gend") {
+
+    const id =
+      interaction.options.getString("id");
+
+    await endGiveaway(id);
+
+    return interaction.reply({
+      content: "✅ Giveaway ended.",
+      ephemeral: true
+    });
+
+  }
+
+  /* ===================== */
+  /* GREROLL */
+  /* ===================== */
+
+  if (cmd === "greroll") {
+
+    const id =
+      interaction.options.getString("id");
+
+    const giveaways = loadData();
+    const g = giveaways[id];
+
+    if (!g) {
+
+      return interaction.reply({
+        content: "❌ Giveaway not found.",
+        ephemeral: true
+      });
+
+    }
+
+    if (!g.entries.length) {
+
+      return interaction.reply({
+        content: "❌ No entries.",
+        ephemeral: true
+      });
+
+    }
+
+    const winner =
+      g.entries[
+        Math.floor(
+          Math.random() * g.entries.length
+        )
+      ];
+
+    const embed =
+      new EmbedBuilder()
+      .setColor("#57F287")
+      .setTitle("🔄 Giveaway Rerolled")
+      .setDescription(
+`🏆 Prize: **${g.prize}**
+
+🎉 Winner:
+<@${winner}>`
+      );
+
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  }
+
+  /* ===================== */
+  /* GLIST */
+  /* ===================== */
+
+  if (cmd === "glist") {
+
+    const giveaways = loadData();
+
+    const active =
+      Object.values(giveaways)
+      .filter(g => !g.ended);
+
+    const embed =
+      new EmbedBuilder()
+      .setColor("#5865F2")
+      .setTitle("<a:gift:ID> Active Giveaways")
+      .setDescription(
+        active.length
+          ? active.map(g =>
+              `🏆 ${g.prize}\nID: \`${g.id}\`\n👥 ${g.entries.length} entries`
+            ).join("\n\n")
+          : "No active giveaways."
+      );
+
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  }
+
+  /* ===================== */
+  /* GINFO */
+  /* ===================== */
+
+  if (cmd === "ginfo") {
+
+    const id =
+      interaction.options.getString("id");
+
+    const giveaways = loadData();
+    const g = giveaways[id];
+
+    if (!g) {
+
+      return interaction.reply({
+        content: "❌ Giveaway not found.",
+        ephemeral: true
+      });
+
+    }
+
+    const embed =
+      new EmbedBuilder()
+      .setColor("#5865F2")
+      .setTitle("📊 Giveaway Info")
+      .addFields(
+        {
+          name: "Prize",
+          value: g.prize
+        },
+        {
+          name: "Entries",
+          value: String(g.entries.length)
+        },
+        {
+          name: "Winners",
+          value: String(g.winners)
+        },
+        {
+          name: "Ended",
+          value: String(g.ended)
+        }
+      );
+
+    return interaction.reply({
+      embeds: [embed]
+    });
+
+  }
+
+  /* ===================== */
+  /* GDELETE */
+  /* ===================== */
+
+  if (cmd === "gdelete") {
+
+    const id =
+      interaction.options.getString("id");
+
+    const giveaways = loadData();
+
+    if (!giveaways[id]) {
+
+      return interaction.reply({
+        content: "❌ Giveaway not found.",
+        ephemeral: true
+      });
+
+    }
+
+    delete giveaways[id];
+
+    saveData(giveaways);
+
+    return interaction.reply({
+      content: "🗑️ Giveaway deleted.",
+      ephemeral: true
+    });
+
+  }
+
+});
+
+};;
