@@ -486,3 +486,149 @@ if (
     });
 
 }
+
+/* ========================= */
+/* MESSAGE CREATE */
+/* ========================= */
+
+client.on("messageCreate", async message => {
+
+    if (message.author.bot) return;
+    if (!message.guild) return;
+
+    const config =
+        automod[message.guild.id];
+
+    if (!config) return;
+
+    /* ========================= */
+    /* ANTI LINKS */
+    /* ========================= */
+
+    if (
+        config.antiLinks &&
+        /(https?:\/\/|www\.)/i.test(
+            message.content
+        )
+    ) {
+
+        await message.delete().catch(() => {});
+
+        return message.channel.send({
+            embeds: [
+                createEmbed(
+                    "🔗 Links Blocked",
+                    `${message.author}, links are not allowed.`,
+                    "#ED4245"
+                )
+            ]
+        });
+
+    }
+
+    /* ========================= */
+    /* ANTI INVITES */
+    /* ========================= */
+
+    if (
+        config.antiInvites &&
+        /(discord\.gg|discord\.com\/invite)/i.test(
+            message.content
+        )
+    ) {
+
+        await message.delete().catch(() => {});
+
+        return message.channel.send({
+            embeds: [
+                createEmbed(
+                    "🚫 Invite Blocked",
+                    `${message.author}, invite links are not allowed.`,
+                    "#ED4245"
+                )
+            ]
+        });
+
+    }
+
+    /* ========================= */
+    /* ANTI CAPS */
+    /* ========================= */
+
+    if (
+        config.antiCaps &&
+        message.content.length > 8
+    ) {
+
+        const caps =
+            message.content.replace(
+                /[^A-Z]/g,
+                ""
+            ).length;
+
+        if (
+            caps >
+            message.content.length * 0.7
+        ) {
+
+            await message.delete().catch(() => {});
+
+            return message.channel.send({
+                embeds: [
+                    createEmbed(
+                        "🔠 Excessive Caps",
+                        `${message.author}, please do not use excessive caps.`,
+                        "#FEE75C"
+                    )
+                ]
+            });
+
+        }
+
+    }
+
+    /* ========================= */
+    /* MENTION SPAM */
+    /* ========================= */
+
+    if (
+        config.mentionSpam &&
+        message.mentions.users.size >= 5
+    ) {
+
+        await message.delete().catch(() => {});
+
+        await message.member
+            .timeout(
+                10 * 60 * 1000,
+                "Mention Spam"
+            )
+            .catch(() => {});
+
+        addLog(
+            message.guild.id,
+            client.user.tag,
+            "Auto Timeout",
+            message.author.tag,
+            "Mention Spam"
+        );
+
+        return message.channel.send({
+            embeds: [
+                createEmbed(
+                    "🚨 Mention Spam Detected",
+                    `${message.author} was timed out for mention spam.`,
+                    "#ED4245"
+                )
+            ]
+        });
+
+    }
+
+});
+
+/* ========================= */
+/* FILE END */
+/* ========================= */
+
+};
