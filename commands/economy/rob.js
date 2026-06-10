@@ -1,50 +1,74 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { balances, robCooldowns } = require('../../database.js');
+const { balances, robCooldowns } = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rob')
-        .setDescription('Attempt to rob cash out of another player\'s wallet.')
-        .addUserOption(option => option.setName('target').setDescription('The user to rob').setRequired(true)),
+        .setDescription('Pickpocket another server member\'s wallet.')
+        .addUserOption(option => 
+            option.setName('target')
+                .setDescription('The user you want to rob')
+                .setRequired(true)),
     async execute(interaction) {
-        const attacker = interaction.user.id;
-        const victim = interaction.options.getUser('target');
+        const userId = interaction.user.id;
+        const target = interaction.options.getUser('target');
+        const cooldownTime = 300000; // 5 minutes
         const now = Date.now();
 
-        if (victim.id === attacker) return interaction.reply({ content: '❌ You can\'t rob yourself!', ephemeral: true });
-
-        if (robCooldowns.has(attacker) && (now - robCooldowns.get(attacker) < 600000)) {
-            return interaction.reply({ content: '⏱️ Chill! Take a break before launching another robbery.', ephemeral: true });
+        if (target.id === userId) {
+            return interaction.reply({ content: '❌ You can\'t rob yourself, silly!', ephemeral: true });
+        }
+        if (target.bot) {
+            return interaction.reply({ content: '❌ Bots don\'t carry wallets.', ephemeral: true });
         }
 
-        const victimBal = balances.get(victim.id) || 0;
-        const attackerBal = balances.get(attacker) || 0;
-
-        if (victimBal < 1000) {
-            return interaction.reply({ content: '❌ This target doesn\'t have enough money to be worth it. Leave them alone!', ephemeral: true });
+        // Check cooldown
+        if (robCooldowns.has(userId)) {
+            const expirationTime = robCooldowns.get(userId) + cooldownTime;
+            if (now < expirationTime) {
+                const timeLeft = Math.round((expirationTime - now) / 60000);
+                return interaction.reply({ 
+                    content: `❌ You need to lay low. Try robbing again in **${timeLeft}** minutes.`, 
+                    ephemeral: true 
+                });
+            }
         }
 
-        robCooldowns.set(attacker, now);
-        const success = Math.random() > 0.5; // 50% chance
-        const embed = new EmbedBuilder().setTimestamp();
+        const userBal = balances.get(userId) || 0;
+        const targetBal = balances.get(target.id) || 0;
 
-        if (success) {
-            const stolen = Math.floor(Math.random() * (victimBal * 0.35)) + 200; // up to 35%
-            balances.set(victim.id, victimBal - stolen);
-            balances.set(attacker, attackerBal + stolen);
-
-            embed.setColor(interaction.client.colors.success)
-                 .setTitle('🥷 Quick Hands!')
-                 .setDescription(`You sneaked up on ${victim} and successfully stole **$${stolen}** directly from their wallet!`);
-        } else {
-            const fine = 500;
-            balances.set(attacker, Math.max(0, attackerBal - fine));
-            embed.setColor(interaction.client.colors.error)
-                 .setTitle('🚨 Caught!')
-                 .setDescription(`You tripped while running away! ${victim} caught you, and you paid them **$${fine}** in damages.`);
-            balances.set(victim.id, victimBal + fine);
+        if (targetBal < 200) {
+            return interaction.reply({ content: `❌ ${target.username} is too poor to rob! They have less than 200 coins.`, ephemeral: true });
+        }
+        if (userBal < 100) {
+            return interaction.reply({ content: '❌ You need at least 100 coins in your wallet to pay court fees if you get caught!', ephemeral: true });
         }
 
-        await interaction.reply({ embeds: [embed] });
+        robCooldowns.set(userId, now);
+        const success = Math.random() > 0.6; // 40% chance of a successful heist
+
+        if (!success) {
+            // Get caught and pay the target a fine
+            const fine = Math.floor(Math.random() * 101) + 50; // fine 50-150 coins
+            balances.set(userId, Math.max(0, userBal - fine));
+            balances.set(target.id, targetBal + fine);
+
+            const fineEmbed = new EmbedBuilder()
+                .setColor(interaction.client.colors?.error || '#E74C3C')
+                .setDescription(`👮 **You got caught trying to rob ${target}!** You were forced to pay them a **${fine}** coin settlement fee.`);
+            return interaction.reply({ embeds: [fineEmbed] });
+        }
+
+        // Steal a percentage of their wallet (between 10% and 40%)
+        const percentage = Math.floor(Math.random() * 31) + 10; 
+        const stolenAmount = Math.floor(targetBal * (percentage / 100));
+
+        balances.set(userId, userBal + stolenAmount);
+        balances.set(target.id, targetBal - stolenAmount);
+
+        const successEmbed = new EmbedBuilder()
+            .setColor(interaction.client.colors?.success || '#2ECC71')
+            .setDescription(`🥷 **Heist Success!** You sneakily pickpocketed ${target} and stole **${stolenAmount}** coins (${percentage}% of their wallet)!`);
+        return interaction.reply({ embeds: [successEmbed] });
     }
 };
