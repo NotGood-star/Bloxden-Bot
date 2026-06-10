@@ -1,27 +1,44 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { balances, begCooldowns } = require('../../database.js');
+const { balances, begCooldowns } = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('beg')
-        .setDescription('Beg bypassers on the street for extra spare coins.'),
+        .setDescription('Beg generous passersby for a few spare coins.'),
     async execute(interaction) {
         const userId = interaction.user.id;
+        const cooldownTime = 30000; // 30 seconds
         const now = Date.now();
 
-        if (begCooldowns.has(userId) && (now - begCooldowns.get(userId) < 30000)) {
-            return interaction.reply({ content: '❌ Don\'t spam begging, it looks bad.', ephemeral: true });
+        if (begCooldowns.has(userId)) {
+            const expirationTime = begCooldowns.get(userId) + cooldownTime;
+            if (now < expirationTime) {
+                const timeLeft = Math.round((expirationTime - now) / 1000);
+                return interaction.reply({ 
+                    content: `❌ Slow down! You can beg again in **${timeLeft}** seconds.`, 
+                    ephemeral: true 
+                });
+            }
         }
 
-        begCooldowns.set(userId, now);
-        const success = Math.random() > 0.35;
-        
-        if (success) {
-            const cash = Math.floor(Math.random() * 120) + 20;
-            balances.set(userId, (balances.get(userId) || 0) + cash);
-            await interaction.reply({ embeds: [new EmbedBuilder().setColor(interaction.client.colors.success).setDescription(`🥺 A kind passerby looked at you and handed you **$${cash}** coins.`)] });
-        } else {
-            await interaction.reply({ embeds: [new EmbedBuilder().setColor(interaction.client.colors.error).setDescription('🥺 Everyone walked past you and ignored your pleas.')] });
+        const success = Math.random() > 0.3; // 70% success rate
+        const embedColor = interaction.client.colors?.success || '#2ECC71';
+
+        if (!success) {
+            begCooldowns.set(userId, now);
+            return interaction.reply({ content: '😢 **A stranger looked at you, sighed, and kept walking.** No coins for you this time!' });
         }
+
+        const amountGained = Math.floor(Math.random() * 81) + 20; // 20 - 100 coins
+        const currentBal = balances.get(userId) || 0;
+        
+        balances.set(userId, currentBal + amountGained);
+        begCooldowns.set(userId, now);
+
+        const begEmbed = new EmbedBuilder()
+            .setColor(embedColor)
+            .setDescription(`🪙 A kind passerby handed you **${amountGained}** coins! Total balance: **${(currentBal + amountGained).toLocaleString()}** coins.`);
+
+        return interaction.reply({ embeds: [begEmbed] });
     }
 };
