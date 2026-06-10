@@ -1,3 +1,5 @@
+    // index.js
+
 // ==================== RENDER KEEP-ALIVE PORT BINDING ====================
 const http = require('http');
 const PORT = process.env.PORT || 3000;
@@ -17,9 +19,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const dotenv = require('dotenv');
 
+// Import runtime states from local module cache
+const { xp, levels, xpCooldowns } = require('./database.js');
+
 dotenv.config();
 
-// Initialize the Discord Client with required gateway permissions
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -32,22 +36,21 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Global Brand Palette for Bot Embed Layouts
+// Global Color Identity System
 client.colors = {
-    success: 0x2ECC71, // Green
-    error: 0xE74C3C,   // Red
-    info: 0x3498DB,    // Blue
-    warning: 0xF1C40F  // Yellow
+    success: 0x2ECC71,
+    error: 0xE74C3C,
+    info: 0x3498DB,
+    warning: 0xF1C40F
 };
 
-// Dynamically read and load command files from subfolders
+// Deep Scan and Load Command Subdirectories
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
     
-    // Skip any plain files inside the commands folder to prevent crashing
     if (!fs.statSync(commandsPath).isDirectory()) continue;
 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -60,12 +63,12 @@ for (const folder of commandFolders) {
     }
 }
 
-// Client Connected Event (Upgraded from 'ready' to 'ClientReady')
+// Client Gateway Ready Notification
 client.once(Events.ClientReady, () => {
     console.log(`🚀 ${client.user.tag} is online and running with Embeds!`);
 });
 
-// Interaction Listener for Slash Commands
+// Global Application (/) Interaction Router
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -75,12 +78,12 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error('Command Execution Error:', error);
+        console.error('Command Router Exception:', error);
         
         const errorEmbed = new EmbedBuilder()
             .setColor(client.colors.error)
             .setTitle('💥 Execution Error')
-            .setDescription('There was an internal error while trying to run this command.')
+            .setDescription('An unhandled exception was encountered during this application action.')
             .setTimestamp();
 
         if (interaction.replied || interaction.deferred) {
@@ -91,11 +94,11 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// 🤖 AUTOMOD & LOGGING ENGINE
+// Message Listener (Automod Filters + Leveling Processor)
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot || !message.guild) return;
 
-    // Anti-Link Protection Rule
+    // 🛡️ 1. AUTOMOD ENGINE: Anti-Link Protection Block
     if (message.content.includes('http://') || message.content.includes('https://')) {
         try {
             await message.delete();
@@ -103,14 +106,45 @@ client.on(Events.MessageCreate, async message => {
             const warnEmbed = new EmbedBuilder()
                 .setColor(client.colors.warning)
                 .setAuthor({ name: 'AutoMod Protection', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`⚠️ ${message.author}, posting links is restricted in this channel.`)
+                .setDescription(`⚠️ ${message.author}, link distribution is prohibited inside this channel.`)
                 .setTimestamp();
 
             const warningMsg = await message.channel.send({ embeds: [warnEmbed] });
-            // Automatically clean up the bot's warning message after 6 seconds
             setTimeout(() => warningMsg.delete().catch(() => null), 6000);
+            return; // Halt logic processing so users don't get XP for links
         } catch (err) {
-            console.error('Failed to manage AutoMod deletion:', err.message);
+            console.error('AutoMod core runtime issue:', err.message);
+        }
+    }
+
+    // 📈 2. PROGRESSION ENGINE: Level XP Generator
+    const userId = message.author.id;
+    const now = Date.now();
+    const xpCooldownTime = 60000; // 1-minute tracking window throttle
+
+    if (!xpCooldowns.has(userId) || (now - xpCooldowns.get(userId) > xpCooldownTime)) {
+        const currentXP = xp.get(userId) || 0;
+        const currentLevel = levels.get(userId) || 1;
+        
+        const gainedXP = Math.floor(Math.random() * 16) + 10; // Random range 10-25 XP
+        const newXP = currentXP + gainedXP;
+        const xpNeeded = currentLevel * 150;
+
+        xp.set(userId, newXP);
+        xpCooldowns.set(userId, now);
+
+        // Process Level Up Evaluation
+        if (newXP >= xpNeeded) {
+            levels.set(userId, currentLevel + 1);
+            xp.set(userId, newXP - xpNeeded); // Retain rollover XP residue
+
+            const lvlUpEmbed = new EmbedBuilder()
+                .setColor(client.colors.warning)
+                .setDescription(`🎉 **GG ${message.author}!** You have successfully elevated to **Level ${currentLevel + 1}**!`);
+            
+            message.channel.send({ embeds: [lvlUpEmbed] }).then(msg => {
+                setTimeout(() => msg.delete().catch(() => null), 7000);
+            });
         }
     }
 });
