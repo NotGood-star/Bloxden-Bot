@@ -20,9 +20,9 @@ module.exports = {
             )
             .setTimestamp();
 
-        // Add a clean link button right below the embed so users can click to join instantly
+        // 🛠️ FIX: Changed .Label to .setLabel (lowercase 's', uppercase 'L')
         const button = new ButtonBuilder()
-            .Label('Join Support Server')
+            .setLabel('Join Support Server')
             .setURL(inviteLink)
             .setStyle(ButtonStyle.Link);
 
