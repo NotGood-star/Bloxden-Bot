@@ -17,7 +17,15 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Dynamically read and load commands from folders
+// Brand colors for Bloxden Bot consistency
+client.colors = {
+    success: 0x2ECC71, // Green
+    error: 0xE74C3C,   // Red
+    info: 0x3498DB,    // Blue
+    warning: 0xF1C40F  // Yellow
+};
+
+// Dynamically read and load commands
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -33,12 +41,10 @@ for (const folder of commandFolders) {
     }
 }
 
-// 🤖 ON READY
 client.once('ready', () => {
-    console.log(`🚀 ${client.user.tag} is online and guarding Bloxden!`);
+    console.log(`🚀 ${client.user.tag} is online and running with Embeds!`);
 });
 
-// ⚡ INTERACTION HANDLER (Executes Slash Commands)
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -49,38 +55,37 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
+        
+        const errorEmbed = new EmbedBuilder()
+            .setColor(client.colors.error)
+            .setTitle('💥 Execution Error')
+            .setDescription('There was an internal error while running this command.')
+            .setTimestamp();
+
         if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error executing this command!', ephemeral: true });
+            await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
         } else {
-            await interaction.reply({ content: 'There was an error executing this command!', ephemeral: true });
+            await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
         }
     }
 });
 
-// 🛡️ AUTOMOD & LOGGING SYSTEM (Example Triggers)
+// 🤖 AUTOMOD SYSTEM (Upgraded with Embed Warning)
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // Basic Anti-Link System
+    // Anti-Link Rule
     if (message.content.includes('http://') || message.content.includes('https://')) {
-        // Exclude trusted links if necessary
         await message.delete();
-        return message.channel.send(`⚠️ ${message.author}, links are not allowed here! (Anti-Link System)`);
-    }
+        
+        const warnEmbed = new EmbedBuilder()
+            .setColor(client.colors.warning)
+            .setAuthor({ name: 'AutoMod Protection', iconURL: client.user.displayAvatarURL() })
+            .setDescription(`⚠️ ${message.author}, links are not permitted in this channel.`)
+            .setTimestamp();
 
-    // Basic Anti-Spam System (Caps Spam Example)
-    const capsCount = message.content.replace(/[^A-Z]/g, "").length;
-    if (capsCount > 15 && message.content.length > 20) {
-        await message.delete();
-        return message.channel.send(`⚠️ ${message.author}, please stop spamming caps.`);
+        return message.channel.send({ embeds: [warnEmbed] });
     }
-});
-
-// 💬 LOG SYSTEM: Message Delete Logs
-client.on('messageDelete', async message => {
-    if (!message.guild || message.author?.bot) return;
-    console.log(`🗑️ Message by ${message.author.tag} was deleted in #${message.channel.name}: "${message.content}"`);
-    // In production, you would fetch a saved log channel ID and send an embed here.
 });
 
 client.login(process.env.TOKEN);
