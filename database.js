@@ -1,6 +1,6 @@
 // database.js
 
-// 💵 Economy State Tracking Maps
+// 💵 Economy Tracking Maps
 const balances = new Map();
 const userJobs = new Map();
 const inventories = new Map();
@@ -16,6 +16,9 @@ const tickets = new Map();
 const xp = new Map();
 const levels = new Map();
 const xpCooldowns = new Map();
+
+// ⚙️ System Channel Redirection Maps (Welcome, Goodbye, Logs)
+const systemChannels = new Map();
 
 // 💼 The 12 Custom Job Career Tracks
 const JOB_LIST = {
@@ -33,7 +36,7 @@ const JOB_LIST = {
     musician: { name: 'Musician 🎸', min: 300, max: 900 }
 };
 
-// 🛒 Premium Collectible Badge Shop Items
+// 🛒 Premium Badge Shop Items
 const SHOP_ITEMS = {
     vip: { name: 'VIP Role', price: 35000 },
     king: { name: 'King Role', price: 50000 },
@@ -41,7 +44,7 @@ const SHOP_ITEMS = {
     god: { name: 'God Role', price: 200000 }
 };
 
-// Export all structural architectures so modules can write into runtime storage
+// Exporting clean references to index.js and all command nodes
 module.exports = { 
     balances, 
     userJobs, 
@@ -54,6 +57,7 @@ module.exports = {
     xp,
     levels,
     xpCooldowns,
+    systemChannels,
     JOB_LIST, 
     SHOP_ITEMS 
 };
