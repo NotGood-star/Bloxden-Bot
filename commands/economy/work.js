@@ -1,45 +1,57 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { userJobs, balances, workCooldowns, JOB_LIST } = require('../../database.js');
+const { balances, userJobs, workCooldowns, JOB_LIST } = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('work')
-        .setDescription('Clock in and complete a shift to earn money.'),
+        .setDescription('Work a shift at your chosen job to earn a salary.'),
     async execute(interaction) {
         const userId = interaction.user.id;
+        const cooldownTime = 3600000; // 1 hour cooldown
         const now = Date.now();
-        const cooldownTime = 1800000; // 30 Minutes
 
-        if (workCooldowns.has(userId) && (now - workCooldowns.get(userId) < cooldownTime)) {
-            const timeLeft = Math.ceil((cooldownTime - (now - workCooldowns.get(userId))) / 1000 / 60);
-            const cdEmbed = new EmbedBuilder()
-                .setColor(interaction.client.colors.warning)
-                .setDescription(`⏱️ Rest up! You can work again in **${timeLeft} minutes**.`);
-            return interaction.reply({ embeds: [cdEmbed], ephemeral: true });
+        // 💼 Check if they even have a job
+        if (!userJobs.has(userId)) {
+            return interaction.reply({ 
+                content: '❌ You don\'t have a job yet! Use \`/work-apply\` to pick a career path first.', 
+                ephemeral: true 
+            });
+        }
+
+        // ⏱️ Check cooldown
+        if (workCooldowns.has(userId)) {
+            const expirationTime = workCooldowns.get(userId) + cooldownTime;
+            if (now < expirationTime) {
+                const timeLeft = Math.round((expirationTime - now) / 60000); // convert to minutes
+                return interaction.reply({ 
+                    content: `❌ Your shift ended recently. You can work again in **${timeLeft}** minutes.`, 
+                    ephemeral: true 
+                });
+            }
         }
 
         const jobId = userJobs.get(userId);
-        if (!jobId) {
-            const noJobEmbed = new EmbedBuilder()
-                .setColor(interaction.client.colors.error)
-                .setDescription('❌ You don\'t have a job yet! Use \`/work-apply\` to choose a career path.');
-            return interaction.reply({ embeds: [noJobEmbed], ephemeral: true });
+        const jobConfig = JOB_LIST[jobId];
+
+        // Fallback protection if job configuration disappeared
+        if (!jobConfig) {
+            return interaction.reply({ content: '❌ Your job data is corrupted. Please re-apply with `/work-apply`.', ephemeral: true });
         }
 
-        const job = JOB_LIST[jobId];
-        const payout = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
-
+        // Calculate random payout based on job config limits
+        const payout = Math.floor(Math.random() * (jobConfig.max - jobConfig.min + 1)) + jobConfig.min;
         const currentBal = balances.get(userId) || 0;
+
         balances.set(userId, currentBal + payout);
         workCooldowns.set(userId, now);
 
-        const embed = new EmbedBuilder()
-            .setColor(interaction.client.colors.success)
-            .setTitle('👷 Shift Complete!')
-            .setDescription(`You put in hard work as a **${job.name}** and earned **$${payout}** Bloxden coins.`)
-            .addFields({ name: 'Total Wallet Balance', value: `🪙 \`$${balances.get(userId)}\`` })
+        const embedColor = interaction.client.colors?.success || '#2ECC71';
+        const workEmbed = new EmbedBuilder()
+            .setColor(embedColor)
+            .setTitle('💼 Shift Completed!')
+            .setDescription(`You worked hard as an **${jobConfig.name}** and earned **🪙 ${payout.toLocaleString()}** coins!\n\nYour new balance is **${(currentBal + payout).toLocaleString()}** coins.`)
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed] });
-    },
+        return interaction.reply({ embeds: [workEmbed] });
+    }
 };
