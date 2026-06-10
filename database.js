@@ -12,6 +12,11 @@ const begCooldowns = new Map();
 // 🎟️ Ticket System Tracking Map
 const tickets = new Map();
 
+// 📈 Leveling & Progression System Maps
+const xp = new Map();
+const levels = new Map();
+const xpCooldowns = new Map();
+
 // 💼 The 12 Custom Job Career Tracks
 const JOB_LIST = {
     astronaut: { name: 'Astronaut 🚀', min: 800, max: 1500 },
@@ -36,7 +41,7 @@ const SHOP_ITEMS = {
     god: { name: 'God Role', price: 200000 }
 };
 
-// Export all maps and configurations so the economy commands can access them
+// Export all structural architectures so modules can write into runtime storage
 module.exports = { 
     balances, 
     userJobs, 
@@ -46,6 +51,9 @@ module.exports = {
     robCooldowns, 
     begCooldowns, 
     tickets,
+    xp,
+    levels,
+    xpCooldowns,
     JOB_LIST, 
     SHOP_ITEMS 
 };
