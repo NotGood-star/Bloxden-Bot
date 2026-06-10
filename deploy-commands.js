@@ -2,21 +2,26 @@
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-const dotenv = require('dotenv');
-
-// Load environment configurations from your hidden .env file
-dotenv.config();
+require('dotenv').config();
 
 const commands = [];
+
+// 📂 Point directly to your master commands folder
 const foldersPath = path.join(__dirname, 'commands');
 
-// Read categories (e.g., moderation, economy, fun)
+if (!fs.existsSync(foldersPath)) {
+    console.error(`❌ [ERROR] The 'commands' directory was not found at: ${foldersPath}`);
+    process.exit(1);
+}
+
 const commandFolders = fs.readdirSync(foldersPath);
+
+console.log('--- 🔍 Scanning Command Directories ---');
 
 for (const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
     
-    // Safety check to ensure we are scanning a directory, not a rogue file
+    // Safety check: Make sure this is actually a folder and not a stray root file
     if (!fs.statSync(commandsPath).isDirectory()) continue;
 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -24,38 +29,57 @@ for (const folder of commandFolders) {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         
+        // Clear Node's module require cache to ensure fresh updates are read
+        delete require.cache[require.resolve(filePath)];
+        
         try {
             const command = require(filePath);
             
-            // Validate that the command file exports the mandatory Discord structure
+            // Strictly check if the command has the required Discord builder structure
             if ('data' in command && 'execute' in command) {
                 commands.push(command.data.toJSON());
+                console.log(`✅ Loaded command: /${command.data.name} [from ${folder}/${file}]`);
             } else {
-                console.log(`⚠️ [WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+                console.log(`⚠️ [WARNING] Skipped ${folder}/${file} - Missing required "data" or "execute" properties.`);
             }
         } catch (error) {
-            // This prevents internal database paths from interrupting registration operations
-            console.error(`❌ [ERROR] Could not load command file at ${filePath}:`, error.message);
+            console.error(`❌ [ERROR] Failed to load command file at ${filePath}:`, error.message);
         }
     }
 }
 
-// Instantiate the REST transmission engine with your bot token
-const rest = new REST().setToken(process.env.TOKEN);
+// 🔐 Extract credentials from your environment configuration setup
+const token = process.env.DISCORD_TOKEN || process.env.TOKEN;
+const clientId = process.env.CLIENT_ID || process.env.APPLICATION_ID;
 
-// Run the registration cycle
+if (!token) {
+    console.error('❌ [CRITICAL ERROR] Bot token is missing! Make sure DISCORD_TOKEN or TOKEN is set in your Environment Variables.');
+    process.exit(1);
+}
+
+if (!clientId) {
+    console.error('❌ [CRITICAL ERROR] Client ID is missing! Make sure CLIENT_ID or APPLICATION_ID is set in your Environment Variables.');
+    process.exit(1);
+}
+
+// Initialize the REST module connection handler
+const rest = new REST({ version: '10' }).setToken(token);
+
 (async () => {
     try {
-        console.log(`🚀 Started refreshing ${commands.length} application (/) commands.`);
-        
-        // Push payload to Discord Global API
-        await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
+        console.log('\n--- 🚀 Syncing with Discord API ---');
+        console.log(`Started refreshing ${commands.length} application (/) commands globally.`);
+
+        // Pushes all valid mapped files directly to Discord application registries globally
+        const data = await rest.put(
+            Routes.applicationCommands(clientId),
             { body: commands },
         );
-        
-        console.log('✅ Successfully reloaded application (/) commands.');
+
+        console.log(`\n🎉 SUCCESS! Successfully reloaded ${data.length} application (/) commands global matrix.`);
+        console.log('It may take a few moments for the cache to update inside your Discord app UI.');
     } catch (error) {
-        console.error('💥 Registration Failed:', error);
+        console.error('\n❌ [API ERROR] Failed to register slash commands with Discord:');
+        console.error(error);
     }
 })();
