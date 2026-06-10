@@ -1,6 +1,21 @@
 // commands/fun/giveaway.js
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const ms = require('ms'); // Ensure 'ms' is installed, or we can use raw minutes parsing. 
+
+// ⏱️ Simple custom parser to replace the 'ms' dependency
+function parseStringToMs(str) {
+    const match = str.match(/^(\d+)([smhd])$/);
+    if (!match) return null;
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    
+    switch (unit) {
+        case 's': return value * 1000;
+        case 'm': return value * 60000;
+        case 'h': return value * 3600000;
+        case 'd': return value * 86400000;
+        default: return null;
+    }
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,18 +33,14 @@ module.exports = {
             option.setName('prize')
                 .setDescription('What item/currency is up for grabs?')
                 .setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages), // Staff Only
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
     async execute(interaction) {
-        const durationStr = interaction.options.getString('duration');
+        const durationStr = interaction.options.getString('duration').toLowerCase().trim();
         const winnerCount = interaction.options.getInteger('winners');
         const prize = interaction.options.getString('prize');
 
-        // Convert duration string to milliseconds
-        let durationMs;
-        try {
-            durationMs = ms(durationStr);
-            if (!durationMs || durationMs < 5000) throw new Error();
-        } catch (e) {
+        const durationMs = parseStringToMs(durationStr);
+        if (!durationMs || durationMs < 5000) {
             return interaction.reply({ 
                 content: '❌ Invalid time format! Use formats like `30s`, `5m`, `2h`, or `1d` (Minimum 5 seconds).', 
                 ephemeral: true 
@@ -38,26 +49,27 @@ module.exports = {
 
         const endTime = Math.floor((Date.now() + durationMs) / 1000);
 
+        // Standard fallback if client color matrix isn't globalized
+        const embedColor = interaction.client.colors?.info || '#5865F2';
+        const successColor = interaction.client.colors?.success || '#57F287';
+
         const giveawayEmbed = new EmbedBuilder()
-            .setColor(interaction.client.colors.info)
+            .setColor(embedColor)
             .setTitle('🎉 NEW GIVEAWAY! 🎉')
             .setDescription(`**Prize:** ${prize}\n**Winners:** ${winnerCount}\n**Hosted By:** ${interaction.user}\n\nEnds: <t:${endTime}:R> (<t:${endTime}:f>)\n\n**React with 🎉 to enter!**`)
             .setTimestamp();
 
-        // Reply to the interaction and fetch the message block
         const message = await interaction.reply({ embeds: [giveawayEmbed], fetchReply: true });
         await message.react('🎉');
 
-        // Setup an automatic countdown timer execution block
         setTimeout(async () => {
             try {
-                // Fetch the latest state of the message and reactions
-                const targetMessage = await interaction.channel.messages.fetch(message.id);
-                const reaction = targetMessage.reactions.cache.get('🎉');
-                
-                if (!reaction) return interaction.channel.send(`❌ Could not resolve reactions for the **${prize}** giveaway.`);
+                const targetMessage = await interaction.channel.messages.fetch(message.id).catch(() => null);
+                if (!targetMessage) return;
 
-                // Fetch all users who reacted (excluding the bot itself)
+                const reaction = targetMessage.reactions.cache.get('🎉');
+                if (!reaction) return;
+
                 const users = await reaction.users.fetch();
                 const entries = users.filter(user => !user.bot).map(user => user);
 
@@ -67,7 +79,6 @@ module.exports = {
                     return await targetMessage.edit({ embeds: [endEmbed] });
                 }
 
-                // Randomly draw winners from the pool
                 const winners = [];
                 const loops = Math.min(winnerCount, entries.length);
                 
@@ -79,14 +90,14 @@ module.exports = {
                 const winnerMentions = winners.map(w => `${w}`).join(', ');
 
                 const successEndEmbed = EmbedBuilder.from(giveawayEmbed)
-                    .setColor(interaction.client.colors.success)
+                    .setColor(successColor)
                     .setDescription(`**Prize:** ${prize}\n\n🛑 **Giveaway Ended!**\n**Winners:** ${winnerMentions}`);
 
                 await targetMessage.edit({ embeds: [successEndEmbed] });
                 await interaction.channel.send(`🎊 Congratulations ${winnerMentions}! You won the giveaway for **${prize}**! 🎊`);
 
             } catch (err) {
-                console.error('Giveaway completion error:', err);
+                console.error('Giveaway timer error:', err);
             }
         }, durationMs);
     }
