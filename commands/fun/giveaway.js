@@ -1,7 +1,7 @@
 // commands/fun/giveaway.js
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
-// ⏱️ Simple custom parser to replace the 'ms' dependency
+// ⏱️ Built-in string-to-ms parser
 function parseStringToMs(str) {
     const match = str.match(/^(\d+)([smhd])$/);
     if (!match) return null;
@@ -49,7 +49,7 @@ module.exports = {
 
         const endTime = Math.floor((Date.now() + durationMs) / 1000);
 
-        // Standard fallback if client color matrix isn't globalized
+        // Fallback checks if client color structures are not globally initialized
         const embedColor = interaction.client.colors?.info || '#5865F2';
         const successColor = interaction.client.colors?.success || '#57F287';
 
@@ -97,7 +97,7 @@ module.exports = {
                 await interaction.channel.send(`🎊 Congratulations ${winnerMentions}! You won the giveaway for **${prize}**! 🎊`);
 
             } catch (err) {
-                console.error('Giveaway timer error:', err);
+                console.error('Giveaway processing loop error:', err);
             }
         }, durationMs);
     }
