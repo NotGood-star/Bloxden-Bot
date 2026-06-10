@@ -1,4 +1,4 @@
-    // index.js
+// index.js
 
 // ==================== RENDER KEEP-ALIVE PORT BINDING ====================
 const http = require('http');
@@ -19,8 +19,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const dotenv = require('dotenv');
 
-// Import runtime states from local module cache
-const { xp, levels, xpCooldowns } = require('./database.js');
+// Load Maps from Database layer
+const { xp, levels, xpCooldowns, systemChannels } = require('./database.js');
 
 dotenv.config();
 
@@ -36,7 +36,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Global Color Identity System
+// Global Sync Color Profiles
 client.colors = {
     success: 0x2ECC71,
     error: 0xE74C3C,
@@ -111,7 +111,7 @@ client.on(Events.MessageCreate, async message => {
 
             const warningMsg = await message.channel.send({ embeds: [warnEmbed] });
             setTimeout(() => warningMsg.delete().catch(() => null), 6000);
-            return; // Halt logic processing so users don't get XP for links
+            return; // Halt message execution so they don't gain leveling rewards for spamming links
         } catch (err) {
             console.error('AutoMod core runtime issue:', err.message);
         }
@@ -142,11 +142,56 @@ client.on(Events.MessageCreate, async message => {
                 .setColor(client.colors.warning)
                 .setDescription(`🎉 **GG ${message.author}!** You have successfully elevated to **Level ${currentLevel + 1}**!`);
             
-            message.channel.send({ embeds: [lvlUpEmbed] }).then(msg => {
-                setTimeout(() => msg.delete().catch(() => null), 7000);
+            // Check if a custom log channel is assigned via /level-set-channel
+            const customLvlChannelId = systemChannels.get(`${message.guild.id}-levelUp`);
+            const targetChannel = message.guild.channels.cache.get(customLvlChannelId) || message.channel;
+
+            targetChannel.send({ embeds: [lvlUpEmbed] }).then(msg => {
+                // Only clean up the level up popup if it prints inside regular discussion rooms
+                if (targetChannel.id === message.channel.id) {
+                    setTimeout(() => msg.delete().catch(() => null), 7000);
+                }
             });
         }
     }
+});
+
+// ==================== WELCOME & GOODBYE GATE LISTENERS ====================
+
+// 🚪 Welcome Listener
+client.on(Events.GuildMemberAdd, async member => {
+    const channelId = systemChannels.get(`${member.guild.id}-welcome`);
+    if (!channelId) return;
+
+    const channel = member.guild.channels.cache.get(channelId);
+    if (!channel) return;
+
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor(client.colors.success)
+        .setTitle('👋 Welcome to BloxDen!')
+        .setDescription(`Welcome ${member}! We are thrilled to have you here.\n\nMake sure to check out our channels and have an amazing time!`)
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+
+    channel.send({ embeds: [welcomeEmbed] });
+});
+
+// 🚪 Goodbye Listener
+client.on(Events.GuildMemberRemove, async member => {
+    const channelId = systemChannels.get(`${member.guild.id}-goodbye`);
+    if (!channelId) return;
+
+    const channel = member.guild.channels.cache.get(channelId);
+    if (!channel) return;
+
+    const goodbyeEmbed = new EmbedBuilder()
+        .setColor(client.colors.error)
+        .setTitle('🚪 Goodbye!')
+        .setDescription(`${member.user.username} has left the server. We wish them the absolute best!`)
+        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+
+    channel.send({ embeds: [goodbyeEmbed] });
 });
 
 client.login(process.env.TOKEN);
