@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { userJobs, JOB_LIST } = require('../../database.js');
+// Double check this path! If database.js is inside your commands folder, change this to '../database.js'
+const { userJobs, JOB_LIST } = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -25,12 +26,22 @@ module.exports = {
                 )),
     async execute(interaction) {
         const jobId = interaction.options.getString('job');
+        
+        // Safety check: ensure the choice actually exists in our database config
+        if (!JOB_LIST[jobId]) {
+            return interaction.reply({ 
+                content: '❌ That job configuration wasn\'t found in the database system.', 
+                ephemeral: true 
+            });
+        }
+
+        // Save the job choice to the Map
         userJobs.set(interaction.user.id, jobId);
 
         const embed = new EmbedBuilder()
             .setColor(interaction.client.colors.success)
             .setTitle('💼 Contract Signed!')
-            .setDescription(`Congratulations ${interaction.user}! You are now hired as a **${JOB_LIST[jobId].name}**.\n\nRun \`/work\` to complete your first shift!`)
+            .setDescription(`Congratulations ${interaction.user}! You are now hired as an **${JOB_LIST[jobId].name}**.\n\nRun \`/work\` to complete your first shift!`)
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
