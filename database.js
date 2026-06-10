@@ -1,26 +1,41 @@
 // database.js
 
-// 💵 Economy Tracking Maps
-const balances = new Map();
-const userJobs = new Map();
-const inventories = new Map();
-const workCooldowns = new Map();
-const crimeCooldowns = new Map();
-const robCooldowns = new Map();
-const begCooldowns = new Map();
+// ========================================================================
+// 💵 CORE ECONOMY ENGINE MAPS
+// ========================================================================
+const balances = new Map();       // User wallets -> Key: userId, Value: integer (coins)
+const userJobs = new Map();       // Active careers -> Key: userId, Value: string (jobId)
+const inventories = new Map();    // Purchased shop items -> Key: userId, Value: array of strings
+const workCooldowns = new Map();  // Cooldown timestamps for shift routines
+const crimeCooldowns = new Map(); // Cooldown timestamps for risky operations
+const robCooldowns = new Map();   // Cooldown timestamps for picking pockets
+const begCooldowns = new Map();   // Cooldown timestamps for low-tier coin drops
 
-// 🎟️ Ticket System Tracking Map
-const tickets = new Map();
+// ========================================================================
+// 🎟️ TICKET HELP DESK INFRASTRUCTURE MAP
+// ========================================================================
+const tickets = new Map();        // Ongoing support rooms -> Key: userId, Value: channelId
 
-// 📈 Leveling & Progression System Maps
-const xp = new Map();
-const levels = new Map();
-const xpCooldowns = new Map();
+// ========================================================================
+// 📈 LEVELING & CHAT PROGRESSION MAPS
+// ========================================================================
+const xp = new Map();             // Message reward points -> Key: userId, Value: integer
+const levels = new Map();         // User ranking milestones -> Key: userId, Value: integer
+const xpCooldowns = new Map();    // Throttles to protect against rapid message spamming
 
-// ⚙️ System Channel Redirection Maps (Welcome, Goodbye, Logs)
-const systemChannels = new Map();
+// ========================================================================
+// ⚙️ AUTOMATED REGIONAL MESSAGE REDIRECTION CHANNELS
+// ========================================================================
+const systemChannels = new Map(); // Setup hooks -> Keys: 'guildId-welcome', 'guildId-goodbye', 'guildId-levelUp'
 
-// 💼 The 12 Custom Job Career Tracks
+// ========================================================================
+// 🎉 OPERATIONAL GIVEAWAY DATA MAP
+// ========================================================================
+const activeGiveaways = new Map(); // Monitors ongoing giveaway data pools -> Key: messageId, Value: giveaway metadata object
+
+// ========================================================================
+// 💼 CONFIGURATION DATA: THE 12 CUSTOM CAREER TRACKS
+// ========================================================================
 const JOB_LIST = {
     astronaut: { name: 'Astronaut 🚀', min: 800, max: 1500 },
     scientist: { name: 'Scientist 🧪', min: 600, max: 1100 },
@@ -36,7 +51,9 @@ const JOB_LIST = {
     musician: { name: 'Musician 🎸', min: 300, max: 900 }
 };
 
-// 🛒 Premium Badge Shop Items
+// ========================================================================
+// 🛒 CONFIGURATION DATA: ECONOMY PREMIUM BADGE SHOP
+// ========================================================================
 const SHOP_ITEMS = {
     vip: { name: 'VIP Role', price: 35000 },
     king: { name: 'King Role', price: 50000 },
@@ -44,7 +61,9 @@ const SHOP_ITEMS = {
     god: { name: 'God Role', price: 200000 }
 };
 
-// Exporting clean references to index.js and all command nodes
+// ========================================================================
+// 📦 MODULE EXPORTS FOR CORE SYSTEM LOADING
+// ========================================================================
 module.exports = { 
     balances, 
     userJobs, 
@@ -58,6 +77,7 @@ module.exports = {
     levels,
     xpCooldowns,
     systemChannels,
+    activeGiveaways,
     JOB_LIST, 
     SHOP_ITEMS 
 };
