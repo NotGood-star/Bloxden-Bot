@@ -1,10 +1,25 @@
-const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
+// ==================== RENDER KEEP-ALIVE PORT BINDING ====================
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bloxden Bot is online and healthy!\n');
+});
+
+server.listen(PORT, () => {
+    console.log(`📡 Render Port Binder: Successfully listening on port ${PORT}`);
+});
+// ========================================================================
+
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
+// Initialize the Discord Client with required gateway permissions
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -17,7 +32,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Brand colors for Bloxden Bot consistency
+// Global Brand Palette for Bot Embed Layouts
 client.colors = {
     success: 0x2ECC71, // Green
     error: 0xE74C3C,   // Red
@@ -25,12 +40,16 @@ client.colors = {
     warning: 0xF1C40F  // Yellow
 };
 
-// Dynamically read and load commands
+// Dynamically read and load command files from subfolders
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
+    
+    // Skip any plain files inside the commands folder to prevent crashing
+    if (!fs.statSync(commandsPath).isDirectory()) continue;
+
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
@@ -41,11 +60,13 @@ for (const folder of commandFolders) {
     }
 }
 
-client.once('ready', () => {
+// Client Connected Event (Upgraded from 'ready' to 'ClientReady')
+client.once(Events.ClientReady, () => {
     console.log(`🚀 ${client.user.tag} is online and running with Embeds!`);
 });
 
-client.on('interactionCreate', async interaction => {
+// Interaction Listener for Slash Commands
+client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
@@ -54,12 +75,12 @@ client.on('interactionCreate', async interaction => {
     try {
         await command.execute(interaction);
     } catch (error) {
-        console.error(error);
+        console.error('Command Execution Error:', error);
         
         const errorEmbed = new EmbedBuilder()
             .setColor(client.colors.error)
             .setTitle('💥 Execution Error')
-            .setDescription('There was an internal error while running this command.')
+            .setDescription('There was an internal error while trying to run this command.')
             .setTimestamp();
 
         if (interaction.replied || interaction.deferred) {
@@ -70,21 +91,27 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// 🤖 AUTOMOD SYSTEM (Upgraded with Embed Warning)
-client.on('messageCreate', async message => {
-    if (message.author.bot) return;
+// 🤖 AUTOMOD & LOGGING ENGINE
+client.on(Events.MessageCreate, async message => {
+    if (message.author.bot || !message.guild) return;
 
-    // Anti-Link Rule
+    // Anti-Link Protection Rule
     if (message.content.includes('http://') || message.content.includes('https://')) {
-        await message.delete();
-        
-        const warnEmbed = new EmbedBuilder()
-            .setColor(client.colors.warning)
-            .setAuthor({ name: 'AutoMod Protection', iconURL: client.user.displayAvatarURL() })
-            .setDescription(`⚠️ ${message.author}, links are not permitted in this channel.`)
-            .setTimestamp();
+        try {
+            await message.delete();
+            
+            const warnEmbed = new EmbedBuilder()
+                .setColor(client.colors.warning)
+                .setAuthor({ name: 'AutoMod Protection', iconURL: client.user.displayAvatarURL() })
+                .setDescription(`⚠️ ${message.author}, posting links is restricted in this channel.`)
+                .setTimestamp();
 
-        return message.channel.send({ embeds: [warnEmbed] });
+            const warningMsg = await message.channel.send({ embeds: [warnEmbed] });
+            // Automatically clean up the bot's warning message after 6 seconds
+            setTimeout(() => warningMsg.delete().catch(() => null), 6000);
+        } catch (err) {
+            console.error('Failed to manage AutoMod deletion:', err.message);
+        }
     }
 });
 
