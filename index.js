@@ -1,45 +1,72 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType } = require('discord.js');
+const fs = require('node:fs');
+const path = require('node:path');
 require('dotenv').config();
+
 const express = require('express');
 const app = express();
-app.get('/', (req, res) => res.send('BloxDen Online'));
-app.listen(process.env.PORT || 10000);
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => res.send('📡 System Operational'));
+app.listen(PORT);
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-client.on('ready', () => console.log(`🚀 Online: ${client.user.tag}`));
+client.commands = new Collection();
+client.colors = { info: '#3498DB', success: '#2ECC71', error: '#E74C3C' };
 
-client.on('messageCreate', async message => {
-    if (message.author.bot || !message.mentions.has(client.user.id)) return;
-    await message.channel.sendTyping();
+// Load Commands
+const foldersPath = path.join(__dirname, 'commands');
+if (fs.existsSync(foldersPath)) {
+    for (const folder of fs.readdirSync(foldersPath)) {
+        const commandsPath = path.join(foldersPath, folder);
+        if (fs.statSync(commandsPath).isDirectory()) {
+            for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
+                const command = require(path.join(commandsPath, file));
+                if ('data' in command && 'execute' in command) client.commands.set(command.data.name, command);
+            }
+        }
+    }
+}
 
-    try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-        const userPrompt = message.content.replace(/<@!?\d+>/g, '').trim() || "Yo, what's good?";
+client.once('ready', () => console.log(`🚀 Online: ${client.user.tag}`));
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: userPrompt }] }] })
-        });
+client.on('interactionCreate', async interaction => {
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (command) try { await command.execute(interaction); } catch (e) { console.error(e); }
+    }
 
-        const data = await response.json();
-        const aiResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Yo, Google isn't responding. Check your API key at Google AI Studio.";
+    if (interaction.isButton()) {
+        // TICKET SYSTEM WITH EMBEDS
+        if (interaction.customId === 'create_ticket') {
+            await interaction.deferReply({ ephemeral: true });
+            
+            const ticketChannel = await interaction.guild.channels.create({
+                name: `ticket-${interaction.user.username}`,
+                type: ChannelType.GuildText,
+                permissionOverwrites: [{ id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] }, { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }]
+            });
 
-        // THE CLEAN EMBED FORMAT
-        const embed = new EmbedBuilder()
-            .setColor('#3498DB')
-            .setAuthor({ name: 'BloxDen Buddy Core', iconURL: client.user.displayAvatarURL() })
-            .setDescription(aiResponse.substring(0, 4000))
-            .setFooter({ text: `Replying to ${message.author.username}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-            .setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor(client.colors.success)
+                .setTitle('🎫 Ticket Opened')
+                .setDescription(`Support request created for ${interaction.user}. A staff member will be with you shortly.`);
+            
+            await ticketChannel.send({ embeds: [embed] });
+            await interaction.editReply({ content: `✅ Ticket created: ${ticketChannel}` });
+        }
 
-        await message.reply({ embeds: [embed] });
-    } catch (error) {
-        console.error('CRITICAL ERROR:', error);
-        await message.reply("My circuits are fried, check the logs bro!");
+        if (interaction.customId === 'close_ticket') {
+            await interaction.deferReply();
+            const embed = new EmbedBuilder()
+                .setColor(client.colors.error)
+                .setTitle('🔒 Ticket Closed')
+                .setDescription('This ticket has been locked by staff.');
+            await interaction.editReply({ embeds: [embed] });
+        }
     }
 });
 
