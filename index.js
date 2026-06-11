@@ -7,12 +7,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 require('dotenv').config();
 
-// Initialize the Google AI client using your secure Render Environment variable
+// Initialize Google AI with standard parameters
 let aiEngine;
 if (process.env.GEMINI_API_KEY) {
     aiEngine = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 } else {
-    console.error("⚠️ [WARNING] GEMINI_API_KEY environment variable is missing from Render settings!");
+    console.error("⚠️ [WARNING] GEMINI_API_KEY variable is missing from Render environment settings!");
 }
 
 // ==========================================
@@ -73,11 +73,6 @@ function writeDatabase(data) {
     try { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); } catch (e) {}
 }
 
-client.db = {
-    getBalance: (userId) => { const db = readDatabase(); return db.balances?.[userId] ?? 0; },
-    setBalance: (userId, amount) => { const db = readDatabase(); if(!db.balances) db.balances = {}; db.balances[userId] = amount; writeDatabase(db); }
-};
-
 // ==========================================
 // DYNAMIC COMMAND HANDLER & DIRECTORY LOADER
 // ==========================================
@@ -114,46 +109,69 @@ client.on('messageDelete', message => {
 });
 
 // ==========================================
-// EVENT: NATURAL CONVERSATIONAL AI PING HANDLER
+// EVENT: CONVERSATIONAL FRIENDLY AI EMBED HANDLER
 // ==========================================
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // Trigger chat response only if the bot is directly mentioned/pinged
+    // Run whenever the bot is directly pinged
     if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
         
-        // Safety lock check if the key was forgotten or misconfigured
         if (!process.env.GEMINI_API_KEY || !aiEngine) {
-            return message.reply("⚙️ My AI conversational core isn't turned on yet. Please verify that the `GEMINI_API_KEY` variable is added to Render!");
+            const errorEmbed = new EmbedBuilder()
+                .setColor(client.colors.error)
+                .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the `GEMINI_API_KEY` is saved in your Render Environment settings.");
+            return message.reply({ embeds: [errorEmbed] });
         }
 
         await message.channel.sendTyping();
 
-        // Strip out the bot ping format to leave pure prompt text
+        // Strip out the bot's mention to get the clean query text
         const userPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
 
         if (!userPrompt) {
-            return message.reply("👋 Hey! What's on your mind? Mention me along with your message to chat!");
+            const waveEmbed = new EmbedBuilder()
+                .setColor(client.colors.info)
+                .setDescription("👋 Yo! What's up? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
+            return message.reply({ embeds: [waveEmbed] });
         }
 
         try {
-            // Using the globally unified modern flash routing path
+            // Using the ultra-stable model version string
             const model = aiEngine.getGenerativeModel({ 
-                model: 'gemini-2.5-flash',
-                systemInstruction: "You are BloxDen Bot, a helpful, witty, and friendly AI community assistant for the BloxDen Roblox community. Answer conversationally, clearly, and keep messages concise enough to fit naturally within a Discord chat environment."
+                model: 'gemini-1.5-flash',
+                systemInstruction: "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat."
             });
 
             const result = await model.generateContent(userPrompt);
-            const aiResponse = result.response.text();
+            let aiResponse = result.response.text();
 
-            if (aiResponse.length > 2000) {
-                return message.reply(aiResponse.substring(0, 1999));
-            }
-            return message.reply(aiResponse);
+            // Format the friendly answer into a clean, modern Discord Embed frame
+            const friendEmbed = new EmbedBuilder()
+                .setColor('#3498DB')
+                .setAuthor({ name: `BloxDen Buddy Core`, iconURL: client.user.displayAvatarURL() })
+                .setDescription(aiResponse)
+                .setFooter({ text: `Replying to ${message.author.username}`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+                .setTimestamp();
+
+            return message.reply({ embeds: [friendEmbed] });
 
         } catch (error) {
             console.error('📊 [DETAILED AI LOG]:', error);
-            return message.reply("🤖 *Bzzzt...* My conversational neural core encountered an issue reaching Google. Try talking to me again in a moment!");
+
+            // Let's print out a helpful fallback embed so it doesn't just display a raw error text block
+            const fallbackEmbed = new EmbedBuilder()
+                .setColor(client.colors.warn)
+                .setTitle('⚠️ Google Connection Timeout')
+                .setDescription(
+                    `Yo! Google's API server is currently blocking our connection request because your bot is running on a hosting data center.\n\n` +
+                    `**To fix this permanent IP block:**\n` +
+                    `1. Head over to [Google AI Studio](https://aistudio.google.com/)\n` +
+                    `2. Generate a brand new API key, but make sure to select **"Create key in a new Google Cloud project"** instead of reusing an old one.\n` +
+                    `3. Swap that new key into your Render \`GEMINI_API_KEY\` variable value line and save changes!`
+                );
+
+            return message.reply({ embeds: [fallbackEmbed] });
         }
     }
 });
@@ -172,7 +190,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Ticket Button Interfaces
+    // Ticket Controls (Kept intact for your server management dashboard panel setup)
     if (interaction.isButton()) {
         if (interaction.customId === 'create_ticket') {
             await interaction.deferReply({ ephemeral: true });
