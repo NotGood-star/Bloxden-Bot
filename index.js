@@ -1,4 +1,4 @@
-// ==========================================
+ // ==========================================
 // CENTRAL CONFIGURATION & MODULE IMPORTS
 // ==========================================
 const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType } = require('discord.js');
@@ -60,6 +60,7 @@ function readDatabase() {
     }
 }
 
+// Helper to keep DB writing stable
 function writeDatabase(data) {
     try { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); } catch (e) {}
 }
@@ -126,7 +127,7 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            // FIXED LINE IS RIGHT HERE: Stable v1 production route
+            // FIXED BOTH ISSUES: Switched to v1 gateway and accurate model targeting
             const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
             
             const systemInstruction = "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat.";
@@ -160,7 +161,6 @@ client.on('messageCreate', async message => {
             return message.reply({ embeds: [friendEmbed] });
 
         } catch (error) {
-
             console.error('📊 [DETAILED AI LOG]:', error);
 
             const fallbackEmbed = new EmbedBuilder()
