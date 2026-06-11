@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Helper to access the local JSON file database
+// Helper to manage JSON DB paths dynamically
 const dbPath = path.join(__dirname, '../../database.json');
 function readDB() { return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}'); }
 function writeDB(data) { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); }
@@ -10,47 +10,54 @@ function writeDB(data) { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2))
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('xp')
-        .setDescription('Manage user configuration levels and experience points.')
+        .setDescription('Manage user XP levels')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .addSubcommand(sub => sub
-            .setName('add')
-            .setDescription('Grant bonus experience points to a community member.')
-            .addUserOption(opt => opt.setName('target').setDescription('The user receiving the points').setRequired(true))
-            .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1)))
-        .addSubcommand(sub => sub
-            .setName('remove')
-            .setDescription('Deduct experience points from a community member.')
-            .addUserOption(opt => opt.setName('target').setDescription('The user losing the points').setRequired(true))
-            .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))),
-
+        .addSubcommand(sub =>
+            sub.setName('add')
+                .setDescription('Give XP to a user')
+                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
+                .setIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1))
+        )
+        .addSubcommand(sub =>
+            sub.setName('remove')
+                .setDescription('Take XP away from a user')
+                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
+                .setIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))
+        ),
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
-        const target = interaction.options.getUser('target');
+        const target = interaction.options.getUser('user');
         const amount = interaction.options.getInteger('amount');
         
         const db = readDB();
-        if (!db.xp) db.xp = {};
-        if (!db.xp[target.id]) db.xp[target.id] = { points: 0, weeklyPoints: 0 };
+        if (!db.levels) db.levels = {};
+        if (!db.levels[target.id]) db.levels[target.id] = { xp: 0, level: 1 };
 
-        const embed = new EmbedBuilder().setTimestamp();
+        let currentXP = db.levels[target.id].xp;
 
         if (sub === 'add') {
-            db.xp[target.id].points += amount;
-            db.xp[target.id].weeklyPoints += amount;
+            currentXP += amount;
+            // Formula to calculate leveling up dynamically
+            let currentLevel = db.levels[target.id].level;
+            let xpNeeded = currentLevel * 500;
+            while (currentXP >= xpNeeded) {
+                currentXP -= xpNeeded;
+                currentLevel++;
+                xpNeeded = currentLevel * 500;
+            }
+            db.levels[target.id].xp = currentXP;
+            db.levels[target.id].level = currentLevel;
             
-            embed.setColor(interaction.client.colors.success)
-                .setTitle('✨ XP Granted')
-                .setDescription(`Successfully added **${amount} XP** to ${target}.\nTotal points: \`${db.xp[target.id].points}\``);
-        } else if (sub === 'remove') {
-            db.xp[target.id].points = Math.max(0, db.xp[target.id].points - amount);
-            db.xp[target.id].weeklyPoints = Math.max(0, db.xp[target.id].weeklyPoints - amount);
-            
-            embed.setColor(interaction.client.colors.error)
-                .setTitle('📉 XP Removed')
-                .setDescription(`Successfully removed **${amount} XP** from ${target}.\nTotal points: \`${db.xp[target.id].points}\``);
+            writeDB(db);
+            return interaction.reply({ content: `✅ Added **${amount} XP** to ${target}. They are now Level **${currentLevel}** (${currentXP} XP)!` });
         }
 
-        writeDB(db);
-        return interaction.reply({ embeds: [embed] });
+        if (sub === 'remove') {
+            currentXP = Math.max(0, currentXP - amount);
+            db.levels[target.id].xp = currentXP;
+            
+            writeDB(db);
+            return interaction.reply({ content: `✅ Removed **${amount} XP** from ${target}. Current XP pool: **${currentXP}**.` });
+        }
     }
 };
