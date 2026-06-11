@@ -7,7 +7,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 require('dotenv').config();
 
-// Initialize Google AI with standard parameters
 let aiEngine;
 if (process.env.GEMINI_API_KEY) {
     aiEngine = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -114,7 +113,6 @@ client.on('messageDelete', message => {
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // Run whenever the bot is directly pinged
     if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
         
         if (!process.env.GEMINI_API_KEY || !aiEngine) {
@@ -126,18 +124,16 @@ client.on('messageCreate', async message => {
 
         await message.channel.sendTyping();
 
-        // Strip out the bot's mention to get the clean query text
         const userPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
 
         if (!userPrompt) {
             const waveEmbed = new EmbedBuilder()
                 .setColor(client.colors.info)
-                .setDescription("👋 Yo! What's up? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
+                .setDescription("👋 Yo! What's up bro? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
             return message.reply({ embeds: [waveEmbed] });
         }
 
         try {
-            // Using the ultra-stable model version string
             const model = aiEngine.getGenerativeModel({ 
                 model: 'gemini-1.5-flash',
                 systemInstruction: "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat."
@@ -145,6 +141,9 @@ client.on('messageCreate', async message => {
 
             const result = await model.generateContent(userPrompt);
             let aiResponse = result.response.text();
+
+            // Truncate if it goes over Discord's embed character limits
+            if (aiResponse.length > 4000) aiResponse = aiResponse.substring(0, 3995) + "...";
 
             // Format the friendly answer into a clean, modern Discord Embed frame
             const friendEmbed = new EmbedBuilder()
@@ -159,16 +158,14 @@ client.on('messageCreate', async message => {
         } catch (error) {
             console.error('📊 [DETAILED AI LOG]:', error);
 
-            // Let's print out a helpful fallback embed so it doesn't just display a raw error text block
             const fallbackEmbed = new EmbedBuilder()
                 .setColor(client.colors.warn)
-                .setTitle('⚠️ Google Connection Timeout')
+                .setTitle('⚠️ Google Connection Issues')
                 .setDescription(
-                    `Yo! Google's API server is currently blocking our connection request because your bot is running on a hosting data center.\n\n` +
-                    `**To fix this permanent IP block:**\n` +
-                    `1. Head over to [Google AI Studio](https://aistudio.google.com/)\n` +
-                    `2. Generate a brand new API key, but make sure to select **"Create key in a new Google Cloud project"** instead of reusing an old one.\n` +
-                    `3. Swap that new key into your Render \`GEMINI_API_KEY\` variable value line and save changes!`
+                    `Yo! Google's gateway is still having trouble acknowledging our connection handshake.\n\n` +
+                    `**Double check these two steps:**\n` +
+                    `1. Make sure your Render environment variable value starts with **\`AIzaSy\`**.\n` +
+                    `2. In your Render Dashboard, click **Manual Deploy ➡️ Clear Cache & Deploy** to make sure it clears out the old key entirely!`
                 );
 
             return message.reply({ embeds: [fallbackEmbed] });
@@ -190,7 +187,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Ticket Controls (Kept intact for your server management dashboard panel setup)
     if (interaction.isButton()) {
         if (interaction.customId === 'create_ticket') {
             await interaction.deferReply({ ephemeral: true });
