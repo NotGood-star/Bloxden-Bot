@@ -14,6 +14,7 @@ if (!fs.existsSync(foldersPath)) {
     process.exit(1);
 }
 
+// Read all sub-folders (e.g., utility, moderation, fun, economy)
 const commandFolders = fs.readdirSync(foldersPath);
 
 console.log('--- 🔍 Scanning Command Directories ---');
@@ -21,7 +22,7 @@ console.log('--- 🔍 Scanning Command Directories ---');
 for (const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
     
-    // Safety check: Make sure this is actually a folder and not a stray root file
+    // Safety check: Make sure this item is a folder and not a random stray root file
     if (!fs.statSync(commandsPath).isDirectory()) continue;
 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -29,13 +30,13 @@ for (const folder of commandFolders) {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         
-        // Clear Node's module require cache to ensure fresh updates are read
+        // Clear Node's module require cache to ensure fresh updates are grabbed
         delete require.cache[require.resolve(filePath)];
         
         try {
             const command = require(filePath);
             
-            // Strictly check if the command has the required Discord builder structure
+            // Strictly check if the command file has the required Discord.js builder options
             if ('data' in command && 'execute' in command) {
                 commands.push(command.data.toJSON());
                 console.log(`✅ Loaded command: /${command.data.name} [from ${folder}/${file}]`);
@@ -48,7 +49,7 @@ for (const folder of commandFolders) {
     }
 }
 
-// 🔐 Extract credentials from your environment configuration setup
+// 🔐 Extract credentials from your environment configurations
 const token = process.env.DISCORD_TOKEN || process.env.TOKEN;
 const clientId = process.env.CLIENT_ID || process.env.APPLICATION_ID;
 
@@ -70,14 +71,14 @@ const rest = new REST({ version: '10' }).setToken(token);
         console.log('\n--- 🚀 Syncing with Discord API ---');
         console.log(`Started refreshing ${commands.length} application (/) commands globally.`);
 
-        // Pushes all valid mapped files directly to Discord application registries globally
+        // Pushes all valid mapped commands directly to Discord's global registry application matrix
         const data = await rest.put(
             Routes.applicationCommands(clientId),
             { body: commands },
         );
 
-        console.log(`\n🎉 SUCCESS! Successfully reloaded ${data.length} application (/) commands global matrix.`);
-        console.log('It may take a few moments for the cache to update inside your Discord app UI.');
+        console.log(`\n🎉 SUCCESS! Successfully reloaded ${data.length} application (/) commands globally.`);
+        console.log('Note: It can take a few moments for the cache to clear inside your Discord app UI.');
     } catch (error) {
         console.error('\n❌ [API ERROR] Failed to register slash commands with Discord:');
         console.error(error);
