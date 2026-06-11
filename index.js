@@ -122,12 +122,35 @@ client.on('messageCreate', async message => {
             const waveEmbed = new EmbedBuilder()
                 .setColor(client.colors.info)
                 .setDescription("👋 Yo! What's up bro? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
+            return message.reply({ embeds: [waveEmbed] });// ==========================================
+// EVENT: CONVERSATIONAL FRIENDLY AI EMBED HANDLER
+// ==========================================
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.guild) return;
+
+    if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
+        
+        if (!process.env.GEMINI_API_KEY) {
+            const errorEmbed = new EmbedBuilder()
+                .setColor(client.colors.error)
+                .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the `GEMINI_API_KEY` is saved in your Render Environment settings.");
+            return message.reply({ embeds: [errorEmbed] });
+        }
+
+        await message.channel.sendTyping();
+
+        const userPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
+
+        if (!userPrompt) {
+            const waveEmbed = new EmbedBuilder()
+                .setColor(client.colors.info)
+                .setDescription("👋 Yo! What's up bro? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
             return message.reply({ embeds: [waveEmbed] });
         }
 
         try {
-            // Direct payload submission bypassing standard SDK connection blocks
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+            // FIXED ENDPOINT LINE RIGHT HERE: Added "-latest"
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
             
             const systemInstruction = "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat.";
 
@@ -178,6 +201,7 @@ client.on('messageCreate', async message => {
         }
     }
 });
+
 
 // ==========================================
 // EVENT: INTERACTION EXECUTION GATEWAY
