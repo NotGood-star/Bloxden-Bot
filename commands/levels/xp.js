@@ -1,11 +1,20 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Helper to manage JSON DB paths dynamically
 const dbPath = path.join(__dirname, '../../database.json');
-function readDB() { return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}'); }
-function writeDB(data) { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); }
+function readDB() { 
+    try {
+        return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}'); 
+    } catch (e) {
+        return {};
+    }
+}
+function writeDB(data) { 
+    try {
+        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); 
+    } catch (e) {}
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,13 +25,13 @@ module.exports = {
             sub.setName('add')
                 .setDescription('Give XP to a user')
                 .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
-                .setIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1))
+                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1))
         )
         .addSubcommand(sub =>
             sub.setName('remove')
                 .setDescription('Take XP away from a user')
                 .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
-                .setIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))
+                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))
         ),
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
@@ -37,7 +46,6 @@ module.exports = {
 
         if (sub === 'add') {
             currentXP += amount;
-            // Formula to calculate leveling up dynamically
             let currentLevel = db.levels[target.id].level;
             let xpNeeded = currentLevel * 500;
             while (currentXP >= xpNeeded) {
