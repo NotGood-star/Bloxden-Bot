@@ -1,14 +1,23 @@
 {
   "name": "bloxden-bot",
-  "version": "1.0.0",
-  "description": "Bloxden Bot - Multi-purpose Discord Bot",
+  "version": "2.0.0",
+  "description": "The official automated community assistant for BloxDen.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "register": "node deploy-commands.js"
+    "deploy": "node deploy-commands.js"
   },
+  "keywords": [
+    "discord",
+    "bot",
+    "roblox",
+    "bloxden"
+  ],
+  "author": "not_good67",
+  "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
   }
 }
