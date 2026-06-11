@@ -2,7 +2,7 @@
 // CENTRAL CONFIGURATION & MODULE IMPORTS
 // ==========================================
 const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType } = require('discord.js');
-const { GoogleGenerativeAI } = require('@google/generative-ai'); // Fixed constructor layout
+const { GoogleGenerativeAI } = require('@google/generative-ai'); 
 const fs = require('node:fs');
 const path = require('node:path');
 require('dotenv').config();
@@ -10,7 +10,7 @@ require('dotenv').config();
 // Initialize the Google AI client using your secure Render Environment variable
 let aiEngine;
 if (process.env.GEMINI_API_KEY) {
-    aiEngine = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); // Fixed initialization syntax
+    aiEngine = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 } else {
     console.error("⚠️ [WARNING] GEMINI_API_KEY environment variable is missing from Render settings!");
 }
@@ -61,11 +61,11 @@ const dbPath = path.join(__dirname, 'database.json');
 function readDatabase() {
     try {
         if (!fs.existsSync(dbPath)) {
-            fs.writeFileSync(dbPath, JSON.stringify({ balances: {}, warnings: {}, cooldowns: {}, jobs: {} }, null, 2));
+            fs.writeFileSync(dbPath, JSON.stringify({ balances: {}, warnings: {}, cooldowns: {}, jobs: {}, levels: {}, vouches: {}, weeklyScores: {}, settings: {} }, null, 2));
         }
         return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}');
     } catch (error) {
-        return { balances: {}, warnings: {}, cooldowns: {}, jobs: {} };
+        return { balances: {}, warnings: {}, cooldowns: {}, jobs: {}, levels: {}, vouches: {}, weeklyScores: {}, settings: {} };
     }
 }
 
@@ -137,9 +137,9 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            // Using stable Gemini generation methods
+            // Using the globally unified modern flash routing path
             const model = aiEngine.getGenerativeModel({ 
-                model: 'gemini-1.5-flash',
+                model: 'gemini-2.5-flash',
                 systemInstruction: "You are BloxDen Bot, a helpful, witty, and friendly AI community assistant for the BloxDen Roblox community. Answer conversationally, clearly, and keep messages concise enough to fit naturally within a Discord chat environment."
             });
 
@@ -152,7 +152,7 @@ client.on('messageCreate', async message => {
             return message.reply(aiResponse);
 
         } catch (error) {
-            console.error('Gemini Interaction Fault:', error);
+            console.error('📊 [DETAILED AI LOG]:', error);
             return message.reply("🤖 *Bzzzt...* My conversational neural core encountered an issue reaching Google. Try talking to me again in a moment!");
         }
     }
