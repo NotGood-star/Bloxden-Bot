@@ -110,29 +110,6 @@ client.on('messageCreate', async message => {
         if (!process.env.GEMINI_API_KEY) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(client.colors.error)
-                .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the \`GEMINI_API_KEY\` is saved in your Render Environment settings.");
-            return message.reply({ embeds: [errorEmbed] });
-        }
-
-        await message.channel.sendTyping();
-
-        const userPrompt = message.content.replace(/<@!?\d+>/g, '').trim();
-
-        if (!userPrompt) {
-            const waveEmbed = new EmbedBuilder()
-                .setColor(client.colors.info)
-                .setDescription("👋 Yo! What's up bro? Ask me anything about games, anime, Rivals, or whatever's on your mind! Just type your question alongside my ping!");
-            return message.reply({ embeds: [waveEmbed] });// ==========================================
-// EVENT: CONVERSATIONAL FRIENDLY AI EMBED HANDLER
-// ==========================================
-client.on('messageCreate', async message => {
-    if (message.author.bot || !message.guild) return;
-
-    if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
-        
-        if (!process.env.GEMINI_API_KEY) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor(client.colors.error)
                 .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the `GEMINI_API_KEY` is saved in your Render Environment settings.");
             return message.reply({ embeds: [errorEmbed] });
         }
@@ -149,7 +126,7 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            // FIXED ENDPOINT LINE RIGHT HERE: Added "-latest"
+            // FIXED: Using flash-latest inside direct web call
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
             
             const systemInstruction = "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat.";
@@ -173,7 +150,6 @@ client.on('messageCreate', async message => {
 
             if (aiResponse.length > 4000) aiResponse = aiResponse.substring(0, 3995) + "...";
 
-            // Format the friendly answer into your clean, modern Discord Embed frame
             const friendEmbed = new EmbedBuilder()
                 .setColor('#3498DB')
                 .setAuthor({ name: `BloxDen Buddy Core`, iconURL: client.user.displayAvatarURL() })
@@ -188,20 +164,16 @@ client.on('messageCreate', async message => {
 
             const fallbackEmbed = new EmbedBuilder()
                 .setColor(client.colors.warn)
-                .setTitle('⚠️ Google Network Intercept')
+                .setTitle('⚠️ Google Connection Warning')
                 .setDescription(
-                    `Yo! Google's server gateway is still actively dropping our hosting connection handshake.\n\n` +
-                    `**How to fix this instantly:**\n` +
-                    `1. Head over to [Google AI Studio](https://aistudio.google.com/).\n` +
-                    `2. Look at your API key list. If the active key says it belongs to a pre-existing project space, delete it.\n` +
-                    `3. Click **Create API Key ➡️ Create API Key in new project** to force-generate a completely fresh, unthrottled personal key payload.`
+                    `Yo! Google's gateway is having trouble handling our request structure right now.\n\n` +
+                    `Check your Render logs to see what's popping up under the Detailed AI Log line!`
                 );
 
             return message.reply({ embeds: [fallbackEmbed] });
         }
     }
 });
-
 
 // ==========================================
 // EVENT: INTERACTION EXECUTION GATEWAY
