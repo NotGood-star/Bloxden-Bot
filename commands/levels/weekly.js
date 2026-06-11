@@ -21,13 +21,13 @@ module.exports = {
         .setName('weekly')
         .setDescription('Weekly operations panel')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addSubcommand(subcommand => {
-            subcommand.setName('leaderboard-set');
-            subcommand.setDescription('Manually seed or override structural weekly score metrics');
-            subcommand.addUserOption(option => option.setName('user').setDescription('Target user').setRequired(true));
-            subcommand.setIntegerOption(option => option.setName('score').setDescription('The weekly score calculation').setRequired(true));
-            return subcommand;
-        }),
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName('leaderboard-set')
+                .setDescription('Manually seed or override structural weekly score metrics')
+                .addUserOption(option => option.setName('user').setDescription('Target user').setRequired(true))
+                .addIntegerOption(option => option.setName('score').setDescription('The weekly score calculation').setRequired(true))
+        ),
     async execute(interaction) {
         const target = interaction.options.getUser('user');
         const score = interaction.options.getInteger('score');
