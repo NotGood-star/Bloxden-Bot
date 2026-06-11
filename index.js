@@ -6,7 +6,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 require('dotenv').config();
 
-// Initialize client with proper intent flags required for message monitoring and guild interactions
+// ==========================================
+// 📡 RENDER PORT BINDER (KEEP-ALIVE ENGINE)
+// ==========================================
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// Respond with a simple status message if Render or a pinging service visits your URL
+app.get('/', (req, res) => {
+    res.send('📡 BloxDen Bot Engine Status: FULLY OPERATIONAL 24/7');
+});
+
+// Start listening so Render detects an open web port successfully and never times out
+app.listen(PORT, () => {
+    console.log(`📡 Render Port Binder: Successfully listening on port ${PORT}`);
+});
+
+// ==========================================
+// DISCORD BOT CLIENT INITIALIZATION
+// ==========================================
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -271,7 +290,7 @@ client.on('interactionCreate', async interaction => {
 
                 const controlEmbed = new EmbedBuilder()
                     .setColor(client.colors.success)
-                    .setTitle(`🎫 Ticket Created: ${interaction.user.username}`)
+                    .setTitle('🎫 Ticket Created')
                     .setDescription(
                         `Welcome to your support terminal, ${interaction.user}.\n\n` +
                         'Please clearly describe your issue or inquiry below. A support team member will be with you shortly.\n\n' +
@@ -311,7 +330,7 @@ client.on('interactionCreate', async interaction => {
             const closedEmbed = new EmbedBuilder()
                 .setColor(client.colors.error)
                 .setTitle('🔒 Ticket Closed & Archived')
-                .setDescription(`This support system thread was locked by ${interaction.user}. Use commands to purge completely if cleanup is finished.`);
+                .setDescription(`This support system thread was locked by ${interaction.user}. Use buttons below to manage cleanup.`);
 
             const managementRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('reopen_ticket').setLabel('Reopen').setStyle(ButtonStyle.Success),
