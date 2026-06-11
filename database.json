@@ -1,0 +1,13 @@
+{
+  "balances": {},
+  "warnings": {},
+  "cooldowns": {},
+  "jobs": {},
+  "levels": {},
+  "vouches": {},
+  "weeklyScores": {},
+  "settings": {
+    "levelChannel": null,
+    "welcomeChannel": null
+  }
+}
