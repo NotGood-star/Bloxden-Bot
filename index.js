@@ -126,8 +126,8 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            // FIXED: Using flash-latest inside direct web call
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+            // FIXED LINE IS RIGHT HERE: Stable v1 production route
+            const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
             
             const systemInstruction = "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat.";
 
@@ -160,6 +160,7 @@ client.on('messageCreate', async message => {
             return message.reply({ embeds: [friendEmbed] });
 
         } catch (error) {
+
             console.error('📊 [DETAILED AI LOG]:', error);
 
             const fallbackEmbed = new EmbedBuilder()
