@@ -1,197 +1,267 @@
-// index.js
-
-// ==================== RENDER KEEP-ALIVE PORT BINDING ====================
-const http = require('http');
-const PORT = process.env.PORT || 3000;
-
-const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bloxden Bot is online and healthy!\n');
-});
-
-server.listen(PORT, () => {
-    console.log(`📡 Render Port Binder: Successfully listening on port ${PORT}`);
-});
-// ========================================================================
-
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, Events } = require('discord.js');
+// ==========================================
+// CENTRAL CONFIGURATION & MODULE IMPORTS
+// ==========================================
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-const dotenv = require('dotenv');
+require('dotenv').config(); // Loads token keys from secure server environment configuration vars
 
-// Load Maps from Database layer
-const { xp, levels, xpCooldowns, systemChannels } = require('./database.js');
-
-dotenv.config();
-
+// Initialize client with proper intent flags required for message monitoring, guild interactions, and target reactions
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildModeration
+        GatewayIntentBits.GuildBans
     ]
 });
 
+// Structural data maps attached directly to global client scope
 client.commands = new Collection();
+client.snipes = new Map();         // Internal memory register tracking the /snipe deletion footprints
+client.warnRegistry = new Map();   // Local volatile database map holding active server infractions
 
-// Global Sync Color Profiles
+// Universal brand color palette accents accessible via interaction pointers
 client.colors = {
-    success: 0x2ECC71,
-    error: 0xE74C3C,
-    info: 0x3498DB,
-    warning: 0xF1C40F
+    info: '#3498DB',    // Radiant blue
+    success: '#2ECC71', // Emerald green
+    error: '#E74C3C',   // Crimson red
+    warn: '#F1C40F'     // Amber yellow
 };
 
-// Deep Scan and Load Command Subdirectories
+// ==========================================
+// DYNAMIC COMMAND HANDLER & DIRECTORY LOADER
+// ==========================================
 const foldersPath = path.join(__dirname, 'commands');
-const commandFolders = fs.readdirSync(foldersPath);
+if (fs.existsSync(foldersPath)) {
+    const commandFolders = fs.readdirSync(foldersPath);
 
-for (const folder of commandFolders) {
-    const commandsPath = path.join(foldersPath, folder);
-    
-    if (!fs.statSync(commandsPath).isDirectory()) continue;
-
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    for (const file of commandFiles) {
-        const filePath = path.join(commandsPath, file);
-        const command = require(filePath);
-        if ('data' in command && 'execute' in command) {
-            client.commands.set(command.data.name, command);
+    for (const folder of commandFolders) {
+        const commandsPath = path.join(foldersPath, folder);
+        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+        
+        for (const file of commandFiles) {
+            const filePath = path.join(commandsPath, file);
+            const command = require(filePath);
+            
+            // Validate essential structural criteria keys before loading command node
+            if ('data' in command && 'execute' in command) {
+                client.commands.set(command.data.name, command);
+            } else {
+                console.warn(`[WARNING] Command at ${filePath} is missing required data/execute frameworks.`);
+            }
         }
     }
 }
 
-// Client Gateway Ready Notification
-client.once(Events.ClientReady, () => {
-    console.log(`🚀 ${client.user.tag} is online and running with Embeds!`);
+// ==========================================
+// EVENT: CLIENT READY & STARTUP SEQUENCE
+// ==========================================
+client.once('ready', () => {
+    console.log(`🚀 System Online! Authenticated and listening as: ${client.user.tag}`);
+    
+    // Set custom activity dashboard presence profile
+    client.user.setActivity('over BloxDen Community', { type: 3 }); // Type 3 = Watching
 });
 
-// Global Application (/) Interaction Router
-client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error('Command Router Exception:', error);
-        
-        const errorEmbed = new EmbedBuilder()
-            .setColor(client.colors.error)
-            .setTitle('💥 Execution Error')
-            .setDescription('An unhandled exception was encountered during this application action.')
-            .setTimestamp();
-
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
-        } else {
-            await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-        }
-    }
+// ==========================================
+// EVENT: MESSAGE DELETE HOOK (For /snipe)
+// ==========================================
+client.on('messageDelete', message => {
+    // Drop execution immediately if item is system-based, from a bot, or detached from server space
+    if (message.author?.bot || !message.guild) return;
+    
+    client.snipes.set(message.channelId, {
+        content: message.content,
+        author: message.author.tag,
+        avatar: message.author.displayAvatarURL({ dynamic: true }),
+        time: new Date().toLocaleTimeString()
+    });
 });
 
-// Message Listener (Automod Filters + Leveling Processor)
-client.on(Events.MessageCreate, async message => {
+// ==========================================
+// EVENT: MESSAGE MENTIONS (For Bot Pings)
+// ==========================================
+client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // 🛡️ 1. AUTOMOD ENGINE: Anti-Link Protection Block
-    if (message.content.includes('http://') || message.content.includes('https://')) {
+    // Isolate instances where the text strictly includes the bot's direct target ping
+    if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
+        const pingEmbed = new EmbedBuilder()
+            .setColor(client.colors.info)
+            .setTitle('👋 Hey there! I\'m BloxDen')
+            .setDescription(
+                `Need some assistance? I am fully operational and ready to serve!\n\n` +
+                `🎮 **Get Started:** Type \`/\` in chat to browse all available slash commands.\n` +
+                `🛡️ **Moderation & Fun:** I have full suites for warning, kicking, and arcade games ready.\n\n` +
+                `🛠️ **Need Help?** If you need direct staff assistance or found a bug, create a support thread using our \`/ticket-panel\` system!`
+            )
+            .setFooter({ text: 'Answering pings instantly • Powered by Render' })
+            .setTimestamp();
+
+        return message.reply({ 
+            content: `Hello ${message.author}! You called?`, 
+            embeds: [pingEmbed] 
+        });
+    }
+});
+
+// ==========================================
+// EVENT: INTERACTION EXECUTION GATEWAY
+// ==========================================
+client.on('interactionCreate', async interaction => {
+    // ------------------------------------------
+    // SUB-ROUTINE A: SLASH COMMAND HANDLING
+    // ------------------------------------------
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+
         try {
-            await message.delete();
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(`Error executing operational command node [${interaction.commandName}]:`, error);
+            const errPayload = { content: '❌ There was a critical system internal code runtime fault while processing this execution loop!', ephemeral: true };
             
-            const warnEmbed = new EmbedBuilder()
-                .setColor(client.colors.warning)
-                .setAuthor({ name: 'AutoMod Protection', iconURL: client.user.displayAvatarURL() })
-                .setDescription(`⚠️ ${message.author}, link distribution is prohibited inside this channel.`)
-                .setTimestamp();
-
-            const warningMsg = await message.channel.send({ embeds: [warnEmbed] });
-            setTimeout(() => warningMsg.delete().catch(() => null), 6000);
-            return; // Halt message execution so they don't gain leveling rewards for spamming links
-        } catch (err) {
-            console.error('AutoMod core runtime issue:', err.message);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(errPayload);
+            } else {
+                await interaction.reply(errPayload);
+            }
         }
     }
 
-    // 📈 2. PROGRESSION ENGINE: Level XP Generator
-    const userId = message.author.id;
-    const now = Date.now();
-    const xpCooldownTime = 60000; // 1-minute tracking window throttle
-
-    if (!xpCooldowns.has(userId) || (now - xpCooldowns.get(userId) > xpCooldownTime)) {
-        const currentXP = xp.get(userId) || 0;
-        const currentLevel = levels.get(userId) || 1;
+    // ------------------------------------------
+    // SUB-ROUTINE B: TICKET V2 BUTTON INTERFACES
+    // ------------------------------------------
+    if (interaction.isButton()) {
         
-        const gainedXP = Math.floor(Math.random() * 16) + 10; // Random range 10-25 XP
-        const newXP = currentXP + gainedXP;
-        const xpNeeded = currentLevel * 150;
+        // 🎫 BUTTON: CREATE NEW SUPPORT CONSOLE TICKET
+        if (interaction.customId === 'create_ticket') {
+            await interaction.deferReply({ ephemeral: true });
 
-        xp.set(userId, newXP);
-        xpCooldowns.set(userId, now);
-
-        // Process Level Up Evaluation
-        if (newXP >= xpNeeded) {
-            levels.set(userId, currentLevel + 1);
-            xp.set(userId, newXP - xpNeeded); // Retain rollover XP residue
-
-            const lvlUpEmbed = new EmbedBuilder()
-                .setColor(client.colors.warning)
-                .setDescription(`🎉 **GG ${message.author}!** You have successfully elevated to **Level ${currentLevel + 1}**!`);
+            // Safeguard to ensure a user only registers a maximum of 1 ticket instance at any single time
+            const cleanUserString = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const existingChannel = interaction.guild.channels.cache.find(
+                c => c.name === `ticket-${cleanUserString}`
+            );
             
-            // Check if a custom log channel is assigned via /level-set-channel
-            const customLvlChannelId = systemChannels.get(`${message.guild.id}-levelUp`);
-            const targetChannel = message.guild.channels.cache.get(customLvlChannelId) || message.channel;
+            if (existingChannel) {
+                return interaction.editReply({ content: `❌ Access Denied: You already have an open support terminal active right here: ${existingChannel}` });
+            }
 
-            targetChannel.send({ embeds: [lvlUpEmbed] }).then(msg => {
-                // Only clean up the level up popup if it prints inside regular discussion rooms
-                if (targetChannel.id === message.channel.id) {
-                    setTimeout(() => msg.delete().catch(() => null), 7000);
-                }
-            });
+            try {
+                const ticketChannel = await interaction.guild.channels.create({
+                    name: `ticket-${cleanUserString}`,
+                    type: ChannelType.GuildText,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone.id,
+                            deny: [PermissionFlagsBits.ViewChannel],
+                        },
+                        {
+                            id: interaction.user.id,
+                            allow: [
+                                PermissionFlagsBits.ViewChannel,
+                                PermissionFlagsBits.SendMessages,
+                                PermissionFlagsBits.AttachFiles,
+                                PermissionFlagsBits.ReadMessageHistory
+                            ],
+                        },
+                        {
+                            id: client.user.id,
+                            allow: [
+                                PermissionFlagsBits.ViewChannel,
+                                PermissionFlagsBits.SendMessages,
+                                PermissionFlagsBits.ManageChannels
+                            ],
+                        }
+                    ],
+                });
+
+                const controlEmbed = new EmbedBuilder()
+                    .setColor(client.colors.success)
+                    .setTitle(`🎫 Ticket Created: ${interaction.user.username}`)
+                    .setDescription(
+                        `Welcome to your support terminal, ${interaction.user}.\n\n` +
+                        'Please clearly describe your issue or inquiry below. A support team member will be with you shortly.\n\n' +
+                        '**Administrative Controls:**\n' +
+                        '🔒 **Close:** Lock message paths and prepare for archiving.\n' +
+                        '🔓 **Reopen:** Restores typing clearance back to the ticket.'
+                    )
+                    .setTimestamp();
+
+                const controlRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('close_ticket').setLabel('Close Ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger)
+                );
+
+                await ticketChannel.send({ content: `👋 ${interaction.user} | Support Staff Pinned Alert`, embeds: [controlEmbed], components: [controlRow] });
+                return interaction.editReply({ content: `🎉 Ticket created successfully! Head over to your private console: ${ticketChannel}` });
+
+            } catch (error) {
+                console.error('Ticket Provisioning Runtime Crash:', error);
+                return interaction.editReply({ content: '❌ System Failure: Could not generate channel frameworks. Check bot permissions hierarchy.' });
+            }
+        }
+
+        // 🔒 BUTTON: TERMINATE USER PERMISSIONS AND CLOSE TICKET
+        if (interaction.customId === 'close_ticket') {
+            await interaction.deferReply();
+
+            const userField = interaction.channel.name.replace('ticket-', '');
+            const targetMember = interaction.guild.members.cache.find(m => m.user.username.toLowerCase().replace(/[^a-z0-9]/g, '') === userField);
+
+            if (targetMember) {
+                await interaction.channel.permissionOverwrites.edit(targetMember.id, {
+                    SendMessages: false,
+                    ViewChannel: true 
+                });
+            }
+
+            const closedEmbed = new EmbedBuilder()
+                .setColor(client.colors.error)
+                .setTitle('🔒 Ticket Closed & Archived')
+                .setDescription(`This support system thread was locked by ${interaction.user}. Use commands to purge completely if cleanup is finished.`);
+
+            const managementRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('reopen_ticket').setLabel('Reopen').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('delete_ticket').setLabel('Delete Room').setStyle(ButtonStyle.Danger)
+            );
+
+            return interaction.editReply({ embeds: [closedEmbed], components: [managementRow] });
+        }
+
+        // 🔓 BUTTON: RE-ENABLE USER TYPING CLEARANCE IN ARCHIVED TICKET
+        if (interaction.customId === 'reopen_ticket') {
+            await interaction.deferReply();
+
+            const userField = interaction.channel.name.replace('ticket-', '');
+            const targetMember = interaction.guild.members.cache.find(m => m.user.username.toLowerCase().replace(/[^a-z0-9]/g, '') === userField);
+
+            if (targetMember) {
+                await interaction.channel.permissionOverwrites.edit(targetMember.id, {
+                    SendMessages: true,
+                    ViewChannel: true
+                });
+            }
+
+            await interaction.editReply({ content: '🔓 Ticket access rights successfully restored.', components: [] });
+        }
+
+        // 🗑️ BUTTON: NUKES CHANNEL PERMANENTLY FROM GUILD REPOSITORY
+        if (interaction.customId === 'delete_ticket') {
+            await interaction.reply({ content: '⚠️ Purging channel space in 5 seconds...' });
+            setTimeout(async () => {
+                try {
+                    await interaction.channel.delete();
+                } catch (e) { /* Channel was dropped manually ahead of schedule */ }
+            }, 5000);
         }
     }
 });
 
-// ==================== WELCOME & GOODBYE GATE LISTENERS ====================
-
-// 🚪 Welcome Listener
-client.on(Events.GuildMemberAdd, async member => {
-    const channelId = systemChannels.get(`${member.guild.id}-welcome`);
-    if (!channelId) return;
-
-    const channel = member.guild.channels.cache.get(channelId);
-    if (!channel) return;
-
-    const welcomeEmbed = new EmbedBuilder()
-        .setColor(client.colors.success)
-        .setTitle('👋 Welcome to BloxDen!')
-        .setDescription(`Welcome ${member}! We are thrilled to have you here.\n\nMake sure to check out our channels and have an amazing time!`)
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setTimestamp();
-
-    channel.send({ embeds: [welcomeEmbed] });
-});
-
-// 🚪 Goodbye Listener
-client.on(Events.GuildMemberRemove, async member => {
-    const channelId = systemChannels.get(`${member.guild.id}-goodbye`);
-    if (!channelId) return;
-
-    const channel = member.guild.channels.cache.get(channelId);
-    if (!channel) return;
-
-    const goodbyeEmbed = new EmbedBuilder()
-        .setColor(client.colors.error)
-        .setTitle('🚪 Goodbye!')
-        .setDescription(`${member.user.username} has left the server. We wish them the absolute best!`)
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setTimestamp();
-
-    channel.send({ embeds: [goodbyeEmbed] });
-});
-
+// ==========================================
+// STARTUP BOOT INITIALIZATION INITIALIZER
+// ==========================================
 client.login(process.env.TOKEN);
