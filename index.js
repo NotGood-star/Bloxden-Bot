@@ -2,17 +2,9 @@
 // CENTRAL CONFIGURATION & MODULE IMPORTS
 // ==========================================
 const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType } = require('discord.js');
-const { GoogleGenerativeAI } = require('@google/generative-ai'); 
 const fs = require('node:fs');
 const path = require('node:path');
 require('dotenv').config();
-
-let aiEngine;
-if (process.env.GEMINI_API_KEY) {
-    aiEngine = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-} else {
-    console.error("⚠️ [WARNING] GEMINI_API_KEY variable is missing from Render environment settings!");
-}
 
 // ==========================================
 // 📡 RENDER PORT BINDER (KEEP-ALIVE ENGINE)
@@ -115,10 +107,10 @@ client.on('messageCreate', async message => {
 
     if (message.mentions.has(client.user.id) && !message.mentions.everyone) {
         
-        if (!process.env.GEMINI_API_KEY || !aiEngine) {
+        if (!process.env.GEMINI_API_KEY) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(client.colors.error)
-                .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the `GEMINI_API_KEY` is saved in your Render Environment settings.");
+                .setDescription("⚙️ My AI conversational core isn't turned on yet! Make sure the \`GEMINI_API_KEY\` is saved in your Render Environment settings.");
             return message.reply({ embeds: [errorEmbed] });
         }
 
@@ -134,18 +126,31 @@ client.on('messageCreate', async message => {
         }
 
         try {
-            const model = aiEngine.getGenerativeModel({ 
-                model: 'gemini-1.5-flash',
-                systemInstruction: "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat."
+            // Direct payload submission bypassing standard SDK connection blocks
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+            
+            const systemInstruction = "You are BloxDen Bot, but you talk exactly like a close friend, bro, or helpful peer. Do not talk like a rigid, robotic assistant. Be authentic, hype up gaming discussions (especially Roblox, Rivals, and anime), give witty, clear, and relaxed answers, and match the user's energy completely. Keep responses concise so they fit naturally in chat.";
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                })
             });
 
-            const result = await model.generateContent(userPrompt);
-            let aiResponse = result.response.text();
+            const data = await response.json();
 
-            // Truncate if it goes over Discord's embed character limits
+            if (!response.ok || !data.candidates || !data.candidates[0]?.content?.parts[0]?.text) {
+                throw new Error(data.error?.message || 'Empty or invalid payload architecture returned from Google Gateway.');
+            }
+
+            let aiResponse = data.candidates[0].content.parts[0].text;
+
             if (aiResponse.length > 4000) aiResponse = aiResponse.substring(0, 3995) + "...";
 
-            // Format the friendly answer into a clean, modern Discord Embed frame
+            // Format the friendly answer into your clean, modern Discord Embed frame
             const friendEmbed = new EmbedBuilder()
                 .setColor('#3498DB')
                 .setAuthor({ name: `BloxDen Buddy Core`, iconURL: client.user.displayAvatarURL() })
@@ -160,12 +165,13 @@ client.on('messageCreate', async message => {
 
             const fallbackEmbed = new EmbedBuilder()
                 .setColor(client.colors.warn)
-                .setTitle('⚠️ Google Connection Issues')
+                .setTitle('⚠️ Google Network Intercept')
                 .setDescription(
-                    `Yo! Google's gateway is still having trouble acknowledging our connection handshake.\n\n` +
-                    `**Double check these two steps:**\n` +
-                    `1. Make sure your Render environment variable value starts with **\`AIzaSy\`**.\n` +
-                    `2. In your Render Dashboard, click **Manual Deploy ➡️ Clear Cache & Deploy** to make sure it clears out the old key entirely!`
+                    `Yo! Google's server gateway is still actively dropping our hosting connection handshake.\n\n` +
+                    `**How to fix this instantly:**\n` +
+                    `1. Head over to [Google AI Studio](https://aistudio.google.com/).\n` +
+                    `2. Look at your API key list. If the active key says it belongs to a pre-existing project space, delete it.\n` +
+                    `3. Click **Create API Key ➡️ Create API Key in new project** to force-generate a completely fresh, unthrottled personal key payload.`
                 );
 
             return message.reply({ embeds: [fallbackEmbed] });
