@@ -2,17 +2,9 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, EmbedBuilder, ChannelType, PermissionFlagsBits } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-const mongoose = require('mongoose');
 const express = require('express');
 
-// --- 1. Database Setup ---
-const SettingsSchema = new mongoose.Schema({
-    guildId: { type: String, required: true, unique: true },
-    customBotName: { type: String, default: 'BloxDen' }
-});
-const Settings = mongoose.model('Settings', SettingsSchema);
-
-// --- 2. Web Dashboard Server ---
+// --- 1. Web Dashboard Server ---
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 10000;
@@ -20,7 +12,7 @@ const PORT = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('<h2>BloxDen Status: Online</h2><p>Dashboard ready for configuration.</p>'));
 app.listen(PORT, () => console.log(`🌐 Web Dashboard running on port ${PORT}`));
 
-// --- 3. Bot Initialization ---
+// --- 2. Bot Initialization ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
@@ -32,11 +24,11 @@ const client = new Client({
 client.commands = new Collection();
 client.colors = { info: '#3498DB', success: '#2ECC71', error: '#E74C3C' };
 
-// --- 4. Load Commands ---
+// --- 3. Load Commands ---
 const foldersPath = path.join(__dirname, 'commands');
 if (fs.existsSync(foldersPath)) {
     for (const folder of fs.readdirSync(foldersPath)) {
-        const commandsPath = path.join(foldersPath, folder);
+        const commandsPath = path.join(__dirname, 'commands', folder);
         if (fs.statSync(commandsPath).isDirectory()) {
             for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
                 const command = require(path.join(commandsPath, file));
@@ -46,7 +38,7 @@ if (fs.existsSync(foldersPath)) {
     }
 }
 
-// --- 5. Bot Events ---
+// --- 4. Bot Events ---
 client.once('ready', () => {
     console.log(`🚀 Online as ${client.user.tag}`);
 });
@@ -60,9 +52,8 @@ client.on('interactionCreate', async interaction => {
 
     // Button Interaction Handling
     if (interaction.isButton()) {
-        // Fetch custom name from Database
-        const settings = await Settings.findOne({ guildId: interaction.guild.id });
-        const botName = settings ? settings.customBotName : 'BloxDen';
+        // Database removed: Using hardcoded name
+        const botName = 'BloxDen';
 
         if (interaction.customId === 'create_ticket') {
             await interaction.deferReply({ ephemeral: true });
@@ -77,7 +68,7 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setColor(client.colors.success)
-                .setAuthor({ name: botName }) // Uses database name
+                .setAuthor({ name: botName }) 
                 .setTitle('🎫 Ticket Opened')
                 .setDescription(`Support request created for ${interaction.user}. A staff member will be with you shortly.`);
             
@@ -87,12 +78,12 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// --- 6. Start Everything ---
+// --- 5. Start Everything ---
 async function start() {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ Connected to MongoDB');
+        // Database connection logic removed
         await client.login(process.env.TOKEN);
+        console.log('✅ Bot logged in successfully');
     } catch (err) {
         console.error('❌ Startup Error:', err);
     }
