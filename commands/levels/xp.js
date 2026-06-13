@@ -1,71 +1,42 @@
+const// commands/levels/xp.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
-
-const dbPath = path.join(__dirname, '../../database.json');
-function readDB() { 
-    try {
-        return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}'); 
-    } catch (e) {
-        return {};
-    }
-}
-function writeDB(data) { 
-    try {
-        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); 
-    } catch (e) {}
-}
+const { xp, levels, saveDatabase } = require('../../database.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('xp')
         .setDescription('Manage user XP levels')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .addSubcommand(sub =>
-            sub.setName('add')
-                .setDescription('Give XP to a user')
-                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
-                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1))
-        )
-        .addSubcommand(sub =>
-            sub.setName('remove')
-                .setDescription('Take XP away from a user')
-                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
-                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))
-        ),
+        .addSubcommand(sub => sub.setName('add')... ) // keep your existing structure
+        .addSubcommand(sub => sub.setName('remove')... ),
+
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
         const target = interaction.options.getUser('user');
         const amount = interaction.options.getInteger('amount');
-        
-        const db = readDB();
-        if (!db.levels) db.levels = {};
-        if (!db.levels[target.id]) db.levels[target.id] = { xp: 0, level: 1 };
+        const userId = target.id;
 
-        let currentXP = db.levels[target.id].xp;
+        // Get current values from the shared memory Map
+        let currentXP = xp.get(userId) || 0;
+        let currentLevel = levels.get(userId) || 1;
 
         if (sub === 'add') {
             currentXP += amount;
-            let currentLevel = db.levels[target.id].level;
-            let xpNeeded = currentLevel * 500;
-            while (currentXP >= xpNeeded) {
-                currentXP -= xpNeeded;
+            // Level up logic
+            while (currentXP >= (currentLevel * 500)) {
+                currentXP -= (currentLevel * 500);
                 currentLevel++;
-                xpNeeded = currentLevel * 500;
             }
-            db.levels[target.id].xp = currentXP;
-            db.levels[target.id].level = currentLevel;
-            
-            writeDB(db);
-            return interaction.reply({ content: `✅ Added **${amount} XP** to ${target}. They are now Level **${currentLevel}** (${currentXP} XP)!` });
+            xp.set(userId, currentXP);
+            levels.set(userId, currentLevel);
+        } else if (sub === 'remove') {
+            currentXP = Math.max(0, currentXP - amount);
+            xp.set(userId, currentXP);
         }
 
-        if (sub === 'remove') {
-            currentXP = Math.max(0, currentXP - amount);
-            db.levels[target.id].xp = currentXP;
-            
-            writeDB(db);
-            return interaction.reply({ content: `✅ Removed **${amount} XP** from ${target}. Current XP pool: **${currentXP}**.` });
-        }
+        // Save to JSON file so it persists after restart
+        saveDatabase();
+
+        await interaction.reply({ content: `✅ Successfully updated ${target}'s XP.` });
     }
 };
