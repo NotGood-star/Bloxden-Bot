@@ -3,20 +3,18 @@ const { Client, GatewayIntentBits, Collection, EmbedBuilder, ChannelType, Permis
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
-
-// Import your database maps
 const db = require('./database.js'); 
 
-// --- 1. Web Server (Keep-Alive) ---
+// 1. Web Server (Keeps Render service alive)
 const app = express();
 app.listen(process.env.PORT || 10000);
 
-// --- 2. Bot Initialization ---
+// 2. Client Initialization
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers, // Essential for Welcome
-        GatewayIntentBits.GuildMessages, // Essential for Leveling
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
     ]
 });
@@ -24,10 +22,10 @@ const client = new Client({
 client.commands = new Collection();
 client.colors = { info: '#3498DB', success: '#2ECC71', error: '#E74C3C' };
 
-// --- 3. Load Commands ---
+// 3. Command Loader
 const foldersPath = path.join(__dirname, 'commands');
 for (const folder of fs.readdirSync(foldersPath)) {
-    const commandsPath = path.join(__dirname, 'commands', folder);
+    const commandsPath = path.join(foldersPath, folder);
     if (fs.statSync(commandsPath).isDirectory()) {
         for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
             const command = require(path.join(commandsPath, file));
@@ -36,33 +34,43 @@ for (const folder of fs.readdirSync(foldersPath)) {
     }
 }
 
-// --- 4. Event Listeners ---
+// 4. Event Handlers
+client.once(Events.ClientReady, () => {
+    console.log(`🚀 Online as ${client.user.tag}`);
+});
 
-// Handle Leveling (Message XP)
+// A. Leveling System
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
-    
-    // Simple XP Logic
+    if (message.author.bot || !message.guild) return;
     const userId = message.author.id;
-    if (db.xpCooldowns.has(userId)) return; // Prevent spam
+    if (db.xpCooldowns.has(userId)) return;
 
-    const currentXp = db.xp.get(userId) || 0;
-    db.xp.set(userId, currentXp + Math.floor(Math.random() * 10) + 5);
-    
-    // Set cooldown (60 seconds)
+    db.xp.set(userId, (db.xp.get(userId) || 0) + Math.floor(Math.random() * 10) + 5);
     db.xpCooldowns.set(userId, true);
     setTimeout(() => db.xpCooldowns.delete(userId), 60000);
+    db.saveDatabase();
 });
 
-// Handle Welcome Message
+// B. Welcome / Goodbye System
 client.on(Events.GuildMemberAdd, async (member) => {
     const channelId = db.systemChannels.get(`${member.guild.id}-welcome`);
-    if (!channelId) return;
     const channel = member.guild.channels.cache.get(channelId);
-    if (channel) channel.send(`Welcome to the server, ${member.user}!`);
+    if (channel) {
+        const embed = new EmbedBuilder().setColor(client.colors.success).setTitle('👋 Welcome!').setDescription(`Welcome to the server, ${member}!`).setThumbnail(member.user.displayAvatarURL());
+        channel.send({ embeds: [embed] });
+    }
 });
 
-// Handle Interaction (Slash Commands + Buttons)
+client.on(Events.GuildMemberRemove, async (member) => {
+    const channelId = db.systemChannels.get(`${member.guild.id}-goodbye`);
+    const channel = member.guild.channels.cache.get(channelId);
+    if (channel) {
+        const embed = new EmbedBuilder().setColor(client.colors.error).setTitle('🚪 Farewell').setDescription(`**${member.user.tag}** has left.`);
+        channel.send({ embeds: [embed] });
+    }
+});
+
+// C. Interaction Handler (Commands & Tickets)
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -81,10 +89,6 @@ client.on(Events.InteractionCreate, async interaction => {
         });
         await interaction.editReply({ content: `✅ Ticket created: ${ticketChannel}` });
     }
-});
-
-client.once(Events.ClientReady, () => {
-    console.log(`🚀 Online as ${client.user.tag}`);
 });
 
 client.login(process.env.TOKEN);
