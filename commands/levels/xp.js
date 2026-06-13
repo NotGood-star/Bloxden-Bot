@@ -1,4 +1,3 @@
-const// commands/levels/xp.js
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { xp, levels, saveDatabase } = require('../../database.js');
 
@@ -7,22 +6,30 @@ module.exports = {
         .setName('xp')
         .setDescription('Manage user XP levels')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-        .addSubcommand(sub => sub.setName('add')... ) // keep your existing structure
-        .addSubcommand(sub => sub.setName('remove')... ),
-
+        .addSubcommand(sub =>
+            sub.setName('add')
+                .setDescription('Give XP to a user')
+                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
+                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to add').setRequired(true).setMinValue(1))
+        )
+        .addSubcommand(sub =>
+            sub.setName('remove')
+                .setDescription('Take XP away from a user')
+                .addUserOption(opt => opt.setName('user').setDescription('The target user').setRequired(true))
+                .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of XP to remove').setRequired(true).setMinValue(1))
+        ),
     async execute(interaction) {
         const sub = interaction.options.getSubcommand();
         const target = interaction.options.getUser('user');
         const amount = interaction.options.getInteger('amount');
         const userId = target.id;
 
-        // Get current values from the shared memory Map
         let currentXP = xp.get(userId) || 0;
         let currentLevel = levels.get(userId) || 1;
 
         if (sub === 'add') {
             currentXP += amount;
-            // Level up logic
+            // Leveling logic
             while (currentXP >= (currentLevel * 500)) {
                 currentXP -= (currentLevel * 500);
                 currentLevel++;
@@ -34,9 +41,7 @@ module.exports = {
             xp.set(userId, currentXP);
         }
 
-        // Save to JSON file so it persists after restart
         saveDatabase();
-
-        await interaction.reply({ content: `✅ Successfully updated ${target}'s XP.` });
+        return interaction.reply({ content: `✅ Successfully updated ${target}'s XP.` });
     }
 };
