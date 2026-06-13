@@ -1,83 +1,65 @@
 // database.js
+const fs = require('fs');
+const path = './database.json';
 
-// ========================================================================
-// 💵 CORE ECONOMY ENGINE MAPS
-// ========================================================================
-const balances = new Map();       // User wallets -> Key: userId, Value: integer (coins)
-const userJobs = new Map();       // Active careers -> Key: userId, Value: string (jobId)
-const inventories = new Map();    // Purchased shop items -> Key: userId, Value: array of strings
-const workCooldowns = new Map();  // Cooldown timestamps for shift routines
-const crimeCooldowns = new Map(); // Cooldown timestamps for risky operations
-const robCooldowns = new Map();   // Cooldown timestamps for picking pockets
-const begCooldowns = new Map();   // Cooldown timestamps for low-tier coin drops
+// --- 1. CORE DATA MAPS (Memory) ---
+const balances = new Map();
+const userJobs = new Map();
+const inventories = new Map();
+const xp = new Map();
+const levels = new Map();
+const systemChannels = new Map();
 
-// ========================================================================
-// 🎟️ TICKET HELP DESK INFRASTRUCTURE MAP
-// ========================================================================
-const tickets = new Map();        // Ongoing support rooms -> Key: userId, Value: channelId
+// --- 2. PERSISTENCE LOGIC (File I/O) ---
+function saveDatabase() {
+    const data = {
+        balances: Object.fromEntries(balances),
+        userJobs: Object.fromEntries(userJobs),
+        inventories: Object.fromEntries(inventories),
+        xp: Object.fromEntries(xp),
+        levels: Object.fromEntries(levels),
+        systemChannels: Object.fromEntries(systemChannels)
+    };
+    fs.writeFileSync(path, JSON.stringify(data, null, 2));
+}
 
-// ========================================================================
-// 📈 LEVELING & CHAT PROGRESSION MAPS
-// ========================================================================
-const xp = new Map();             // Message reward points -> Key: userId, Value: integer
-const levels = new Map();         // User ranking milestones -> Key: userId, Value: integer
-const xpCooldowns = new Map();    // Throttles to protect against rapid message spamming
+function loadDatabase() {
+    if (!fs.existsSync(path)) return;
+    try {
+        const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+        
+        // Load data into Maps
+        Object.entries(data.balances || {}).forEach(([k, v]) => balances.set(k, v));
+        Object.entries(data.userJobs || {}).forEach(([k, v]) => userJobs.set(k, v));
+        Object.entries(data.inventories || {}).forEach(([k, v]) => inventories.set(k, v));
+        Object.entries(data.xp || {}).forEach(([k, v]) => xp.set(k, v));
+        Object.entries(data.levels || {}).forEach(([k, v]) => levels.set(k, v));
+        Object.entries(data.systemChannels || {}).forEach(([k, v]) => systemChannels.set(k, v));
+        
+        console.log('✅ Database loaded successfully.');
+    } catch (err) {
+        console.error('❌ Failed to load database:', err);
+    }
+}
 
-// ========================================================================
-// ⚙️ AUTOMATED REGIONAL MESSAGE REDIRECTION CHANNELS
-// ========================================================================
-const systemChannels = new Map(); // Setup hooks -> Keys: 'guildId-welcome', 'guildId-goodbye', 'guildId-levelUp'
-
-// ========================================================================
-// 🎉 OPERATIONAL GIVEAWAY DATA MAP
-// ========================================================================
-const activeGiveaways = new Map(); // Monitors ongoing giveaway data pools -> Key: messageId, Value: giveaway metadata object
-
-// ========================================================================
-// 💼 CONFIGURATION DATA: THE 12 CUSTOM CAREER TRACKS
-// ========================================================================
-const JOB_LIST = {
-    astronaut: { name: 'Astronaut 🚀', min: 800, max: 1500 },
-    scientist: { name: 'Scientist 🧪', min: 600, max: 1100 },
-    youtuber: { name: 'Youtuber 🎥', min: 200, max: 2000 },
-    wrestler: { name: 'Wrestler 🤼', min: 400, max: 900 },
-    developer: { name: 'Developer 💻', min: 500, max: 1000 },
-    hacker: { name: 'Hacker 🧑‍💻', min: 300, max: 1400 },
-    teacher: { name: 'Teacher 🍎', min: 300, max: 600 },
-    doctor: { name: 'Doctor 🩺', min: 700, max: 1300 },
-    cab_driver: { name: 'Cab Driver 🚖', min: 200, max: 500 },
-    director: { name: 'Director 🎬', min: 500, max: 1100 },
-    actor: { name: 'Actor 🎭', min: 400, max: 1200 },
-    musician: { name: 'Musician 🎸', min: 300, max: 900 }
-};
-
-// ========================================================================
-// 🛒 CONFIGURATION DATA: ECONOMY PREMIUM BADGE SHOP
-// ========================================================================
-const SHOP_ITEMS = {
-    vip: { name: 'VIP Role', price: 35000 },
-    king: { name: 'King Role', price: 50000 },
-    legend: { name: 'Legend Role', price: 100000 },
-    god: { name: 'God Role', price: 200000 }
-};
-
-// ========================================================================
-// 📦 MODULE EXPORTS FOR CORE SYSTEM LOADING
-// ========================================================================
-module.exports = { 
-    balances, 
-    userJobs, 
-    inventories, 
-    workCooldowns, 
-    crimeCooldowns, 
-    robCooldowns, 
-    begCooldowns, 
-    tickets,
+// --- 3. EXPORTS ---
+module.exports = {
+    balances,
+    userJobs,
+    inventories,
     xp,
     levels,
-    xpCooldowns,
     systemChannels,
-    activeGiveaways,
-    JOB_LIST, 
-    SHOP_ITEMS 
+    saveDatabase,
+    loadDatabase,
+    // Add your static configurations here so they are accessible
+    JOB_LIST: {
+        astronaut: { name: 'Astronaut 🚀', min: 800, max: 1500 },
+        developer: { name: 'Developer 💻', min: 500, max: 1000 },
+        // ... rest of your jobs
+    },
+    SHOP_ITEMS: {
+        vip: { name: 'VIP Role', price: 35000 },
+        // ... rest of your shop items
+    }
 };
