@@ -1,4 +1,3 @@
-// commands/utility/welcome-goodbye.js
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { systemChannels, saveDatabase } = require('../../database.js');
 
@@ -19,7 +18,7 @@ module.exports = {
             return await interaction.reply({ content: '❌ You must provide at least one channel to configure.', ephemeral: true });
         }
 
-        let desc = 'Successfully updated system channels:\n\n';
+        let desc = 'Successfully linked your system events:\n\n';
 
         if (welcomeChannel) {
             systemChannels.set(`${guildId}-welcome`, welcomeChannel.id);
@@ -31,13 +30,13 @@ module.exports = {
             desc += `🚪 Goodbye: ${goodbyeChannel}\n`;
         }
 
-        // Persist the change to JSON immediately
         saveDatabase();
 
         const embed = new EmbedBuilder()
             .setColor(interaction.client.colors.success)
-            .setTitle('⚙️ System Channels Updated')
+            .setTitle('⚙️ System Channels Anchored')
             .setDescription(desc)
+            .setThumbnail(interaction.guild.iconURL({ dynamic: true })) // Displays Server Icon
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
