@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require('node:fs');
 const path = './database.json';
 
 // --- 1. CORE DATA MAPS (Memory) ---
@@ -8,6 +8,8 @@ const inventories = new Map();
 const xp = new Map();
 const levels = new Map();
 const systemChannels = new Map();
+const xpCooldowns = new Map(); // Added for index.js
+const begCooldowns = new Map(); // Added for economy commands
 
 // --- 2. PERSISTENCE LOGIC ---
 function saveDatabase() {
@@ -33,12 +35,12 @@ function loadDatabase() {
         const data = JSON.parse(raw);
         
         // Populate maps from saved file
-        Object.entries(data.balances || {}).forEach(([k, v]) => balances.set(k, v));
-        Object.entries(data.userJobs || {}).forEach(([k, v]) => userJobs.set(k, v));
-        Object.entries(data.inventories || {}).forEach(([k, v]) => inventories.set(k, v));
-        Object.entries(data.xp || {}).forEach(([k, v]) => xp.set(k, v));
-        Object.entries(data.levels || {}).forEach(([k, v]) => levels.set(k, v));
-        Object.entries(data.systemChannels || {}).forEach(([k, v]) => systemChannels.set(k, v));
+        if (data.balances) Object.entries(data.balances).forEach(([k, v]) => balances.set(k, v));
+        if (data.userJobs) Object.entries(data.userJobs).forEach(([k, v]) => userJobs.set(k, v));
+        if (data.inventories) Object.entries(data.inventories).forEach(([k, v]) => inventories.set(k, v));
+        if (data.xp) Object.entries(data.xp).forEach(([k, v]) => xp.set(k, v));
+        if (data.levels) Object.entries(data.levels).forEach(([k, v]) => levels.set(k, v));
+        if (data.systemChannels) Object.entries(data.systemChannels).forEach(([k, v]) => systemChannels.set(k, v));
         
         console.log('✅ Database loaded successfully.');
     } catch (err) {
@@ -71,7 +73,8 @@ const SHOP_ITEMS = {
 
 // --- 4. EXPORTS ---
 module.exports = {
-    balances, userJobs, inventories, xp, levels, systemChannels,
+    balances, userJobs, inventories, xp, levels, systemChannels, 
+    xpCooldowns, begCooldowns, // Added these to exports
     saveDatabase, loadDatabase,
     JOB_LIST, SHOP_ITEMS
 };
