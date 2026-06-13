@@ -1,22 +1,22 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder, ChannelType, PermissionFlagsBits, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 
-// --- 1. Web Dashboard Server ---
-const app = express();
-app.use(express.urlencoded({ extended: true }));
-const PORT = process.env.PORT || 10000;
+// Import your database maps
+const db = require('./database.js'); 
 
-app.get('/', (req, res) => res.send('<h2>BloxDen Status: Online</h2><p>Dashboard ready for configuration.</p>'));
-app.listen(PORT, () => console.log(`🌐 Web Dashboard running on port ${PORT}`));
+// --- 1. Web Server (Keep-Alive) ---
+const app = express();
+app.listen(process.env.PORT || 10000);
 
 // --- 2. Bot Initialization ---
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers, // Essential for Welcome
+        GatewayIntentBits.GuildMessages, // Essential for Leveling
         GatewayIntentBits.MessageContent
     ]
 });
@@ -26,67 +26,65 @@ client.colors = { info: '#3498DB', success: '#2ECC71', error: '#E74C3C' };
 
 // --- 3. Load Commands ---
 const foldersPath = path.join(__dirname, 'commands');
-if (fs.existsSync(foldersPath)) {
-    for (const folder of fs.readdirSync(foldersPath)) {
-        const commandsPath = path.join(__dirname, 'commands', folder);
-        if (fs.statSync(commandsPath).isDirectory()) {
-            for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
-                const command = require(path.join(commandsPath, file));
-                if ('data' in command && 'execute' in command) client.commands.set(command.data.name, command);
-            }
+for (const folder of fs.readdirSync(foldersPath)) {
+    const commandsPath = path.join(__dirname, 'commands', folder);
+    if (fs.statSync(commandsPath).isDirectory()) {
+        for (const file of fs.readdirSync(commandsPath).filter(f => f.endsWith('.js'))) {
+            const command = require(path.join(commandsPath, file));
+            if ('data' in command && 'execute' in command) client.commands.set(command.data.name, command);
         }
     }
 }
 
-// --- 4. Bot Events ---
-client.once('ready', () => {
-    console.log(`🚀 Online as ${client.user.tag}`);
+// --- 4. Event Listeners ---
+
+// Handle Leveling (Message XP)
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
+    
+    // Simple XP Logic
+    const userId = message.author.id;
+    if (db.xpCooldowns.has(userId)) return; // Prevent spam
+
+    const currentXp = db.xp.get(userId) || 0;
+    db.xp.set(userId, currentXp + Math.floor(Math.random() * 10) + 5);
+    
+    // Set cooldown (60 seconds)
+    db.xpCooldowns.set(userId, true);
+    setTimeout(() => db.xpCooldowns.delete(userId), 60000);
 });
 
-client.on('interactionCreate', async interaction => {
-    // Command Handling
+// Handle Welcome Message
+client.on(Events.GuildMemberAdd, async (member) => {
+    const channelId = db.systemChannels.get(`${member.guild.id}-welcome`);
+    if (!channelId) return;
+    const channel = member.guild.channels.cache.get(channelId);
+    if (channel) channel.send(`Welcome to the server, ${member.user}!`);
+});
+
+// Handle Interaction (Slash Commands + Buttons)
+client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (command) try { await command.execute(interaction); } catch (e) { console.error(e); }
     }
-
-    // Button Interaction Handling
-    if (interaction.isButton()) {
-        // Database removed: Using hardcoded name
-        const botName = 'BloxDen';
-
-        if (interaction.customId === 'create_ticket') {
-            await interaction.deferReply({ ephemeral: true });
-            const ticketChannel = await interaction.guild.channels.create({
-                name: `ticket-${interaction.user.username}`,
-                type: ChannelType.GuildText,
-                permissionOverwrites: [
-                    { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
-                ]
-            });
-
-            const embed = new EmbedBuilder()
-                .setColor(client.colors.success)
-                .setAuthor({ name: botName }) 
-                .setTitle('🎫 Ticket Opened')
-                .setDescription(`Support request created for ${interaction.user}. A staff member will be with you shortly.`);
-            
-            await ticketChannel.send({ embeds: [embed] });
-            await interaction.editReply({ content: `✅ Ticket created: ${ticketChannel}` });
-        }
+    
+    if (interaction.isButton() && interaction.customId === 'create_ticket') {
+        await interaction.deferReply({ ephemeral: true });
+        const ticketChannel = await interaction.guild.channels.create({
+            name: `ticket-${interaction.user.username}`,
+            type: ChannelType.GuildText,
+            permissionOverwrites: [
+                { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+            ]
+        });
+        await interaction.editReply({ content: `✅ Ticket created: ${ticketChannel}` });
     }
 });
 
-// --- 5. Start Everything ---
-async function start() {
-    try {
-        // Database connection logic removed
-        await client.login(process.env.TOKEN);
-        console.log('✅ Bot logged in successfully');
-    } catch (err) {
-        console.error('❌ Startup Error:', err);
-    }
-}
+client.once(Events.ClientReady, () => {
+    console.log(`🚀 Online as ${client.user.tag}`);
+});
 
-start();
+client.login(process.env.TOKEN);
