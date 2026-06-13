@@ -1,42 +1,43 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-
-const balances = new Map(); 
-const cooldowns = new Map();
+// IMPORT SHARED DATA FROM DATABASE.JS
+const { balances, begCooldowns, saveDatabase } = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('daily')
         .setDescription('Claim your daily Bloxden coins!'),
+        
     async execute(interaction) {
         const userId = interaction.user.id;
-        const cooldown = cooldowns.get(userId);
         const now = Date.now();
-        
-        if (cooldown && (now - cooldown < 86400000)) {
-            const timeRemaining = 86400000 - (now - cooldown);
-            const hours = Math.floor(timeRemaining / 3600000);
+        const COOLDOWN_TIME = 86400000; // 24 hours
+        const dailyReward = 500;
 
-            const cooldownEmbed = new EmbedBuilder()
-                .setColor(interaction.client.colors.warning)
-                .setTitle('⏱️ Cooldown Active')
-                .setDescription(`You have already claimed your daily reward. Come back in **${hours} hours**.`);
-                
-            return interaction.reply({ embeds: [cooldownEmbed], ephemeral: true });
+        // Use the shared map for cooldowns
+        const lastClaim = begCooldowns.get(userId) || 0;
+        
+        if (now - lastClaim < COOLDOWN_TIME) {
+            const timeRemaining = COOLDOWN_TIME - (now - lastClaim);
+            const hours = Math.ceil(timeRemaining / 3600000);
+            return interaction.reply({ content: `⏱️ Come back in **${hours} hours**.`, ephemeral: true });
         }
 
+        // Update shared balance
         const currentBalance = balances.get(userId) || 0;
-        const dailyReward = 500;
         balances.set(userId, currentBalance + dailyReward);
-        cooldowns.set(userId, now);
+        
+        // Update shared cooldown
+        begCooldowns.set(userId, now);
+        
+        // Save to JSON
+        saveDatabase();
 
         const dailyEmbed = new EmbedBuilder()
             .setColor(interaction.client.colors.success)
             .setTitle('💵 Daily Reward Claimed!')
-            .setDescription(`You safely deposited **$${dailyReward}** Bloxden coins into your account.`)
-            .addFields(
-                { name: 'Wallet Balance', value: `$${balances.get(userId)}`, inline: true }
-            )
-            .setThumbnail('https://i.imgur.com/vHkWg6A.png') // Optional: Drop a cool coin asset image link here
+            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 })) // Added Profile Picture
+            .setDescription(`You deposited **$${dailyReward}** coins.`)
+            .addFields({ name: 'Wallet Balance', value: `$${balances.get(userId).toLocaleString()}`, inline: true })
             .setTimestamp();
 
         await interaction.reply({ embeds: [dailyEmbed] });
