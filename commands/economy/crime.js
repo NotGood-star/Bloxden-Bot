@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { balances, crimeCooldowns } = require('../../database.js'); 
+// Import both the data maps and the save function
+const db = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,8 +11,9 @@ module.exports = {
         const cooldownTime = 120000; // 2 minutes
         const now = Date.now();
 
-        if (crimeCooldowns.has(userId)) {
-            const expirationTime = crimeCooldowns.get(userId) + cooldownTime;
+        // 1. Check Cooldown
+        if (db.crimeCooldowns.has(userId)) {
+            const expirationTime = db.crimeCooldowns.get(userId) + cooldownTime;
             if (now < expirationTime) {
                 const timeLeft = Math.round((expirationTime - now) / 1000);
                 return interaction.reply({ 
@@ -21,31 +23,38 @@ module.exports = {
             }
         }
 
+        // 2. Logic
         const success = Math.random() > 0.5; // 50/50 chance
-        const currentBal = balances.get(userId) || 0;
-        crimeCooldowns.set(userId, now);
+        const currentBal = db.balances.get(userId) || 0;
+        
+        // Update state
+        db.crimeCooldowns.set(userId, now);
 
+        let resultEmbed;
         if (!success) {
-            // Lose a random chunk of cash between 200 and 600 coins
+            // Failure logic
             const loss = Math.floor(Math.random() * 401) + 200;
-            const finalBal = Math.max(0, currentBal - loss); // Prevent going into negative balance
-            balances.set(userId, finalBal);
+            const finalBal = Math.max(0, currentBal - loss);
+            db.balances.set(userId, finalBal);
 
-            const failEmbed = new EmbedBuilder()
+            resultEmbed = new EmbedBuilder()
                 .setColor(interaction.client.colors?.error || '#E74C3C')
                 .setTitle('🚨 Caught by Security!')
                 .setDescription(`You tried to bypass security but failed miserably. You were fined **🪙 ${loss}** coins.\nBalance: **${finalBal.toLocaleString()}** coins.`);
-            return interaction.reply({ embeds: [failEmbed] });
+        } else {
+            // Success logic
+            const reward = Math.floor(Math.random() * 701) + 500;
+            db.balances.set(userId, currentBal + reward);
+
+            resultEmbed = new EmbedBuilder()
+                .setColor(interaction.client.colors?.success || '#2ECC71')
+                .setTitle('😈 Crime Successful!')
+                .setDescription(`You successfully breached a digital asset vault and made off with **🪙 ${reward}** coins!\nBalance: **${(currentBal + reward).toLocaleString()}** coins.`);
         }
 
-        // Win a random chunk of cash between 500 and 1200 coins
-        const reward = Math.floor(Math.random() * 701) + 500;
-        balances.set(userId, currentBal + reward);
+        // 3. Save to disk so data persists after restart
+        db.saveDatabase();
 
-        const successEmbed = new EmbedBuilder()
-            .setColor(interaction.client.colors?.success || '#2ECC71')
-            .setTitle('😈 Crime Successful!')
-            .setDescription(`You successfully breached a digital asset vault and made off with **🪙 ${reward}** coins!\nBalance: **${(currentBal + reward).toLocaleString()}** coins.`);
-        return interaction.reply({ embeds: [successEmbed] });
+        return interaction.reply({ embeds: [resultEmbed] });
     }
 };
