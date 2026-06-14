@@ -6,11 +6,25 @@ const express = require('express');
 const cron = require('node-cron');
 const db = require('./database.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+// 1. Web Server (Keep-Alive)
+const app = express();
+app.get('/', (req, res) => res.send('Bot is active!'));
+app.listen(process.env.PORT || 10000);
+
+// 2. Client Setup
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMembers, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent 
+    ] 
+});
+
 client.commands = new Collection();
 client.colors = { success: '#2ECC71', error: '#E74C3C', info: '#3498DB' };
 
-// Load Commands
+// 3. Load Commands
 const foldersPath = path.join(__dirname, 'commands');
 for (const folder of fs.readdirSync(foldersPath)) {
     const commandsPath = path.join(foldersPath, folder);
@@ -22,7 +36,7 @@ for (const folder of fs.readdirSync(foldersPath)) {
     }
 }
 
-// Events
+// 4. Events
 client.once(Events.ClientReady, () => {
     db.loadDatabase();
     console.log(`🚀 Online as ${client.user.tag}`);
@@ -41,8 +55,9 @@ client.on(Events.MessageCreate, async (message) => {
     if (newXp >= lvl * 500) {
         db.levels.set(userId, lvl + 1);
         db.xp.set(userId, 0);
-        const chan = message.guild.channels.cache.get(db.systemChannels.get(`${message.guild.id}-levels`));
-        if (chan) chan.send(`🎉 ${message.author} leveled up to **${lvl + 1}**!`);
+        const chanId = db.systemChannels.get(`${message.guild.id}-levels`);
+        const chan = message.guild.channels.cache.get(chanId);
+        if (chan) chan.send(`🎉 ${message.author} leveled up to **Level ${lvl + 1}**!`);
     }
 
     db.xpCooldowns.set(userId, true);
@@ -50,7 +65,26 @@ client.on(Events.MessageCreate, async (message) => {
     db.saveDatabase();
 });
 
-// B. Weekly Leaderboard (Sunday at 12 PM)
+// B. Welcome / Goodbye
+client.on(Events.GuildMemberAdd, async (member) => {
+    const channelId = db.systemChannels.get(`${member.guild.id}-welcome`);
+    const channel = member.guild.channels.cache.get(channelId);
+    if (channel) {
+        const embed = new EmbedBuilder().setColor(client.colors.success).setTitle('👋 Welcome!').setDescription(`Welcome ${member} to the server!`);
+        channel.send({ embeds: [embed] });
+    }
+});
+
+client.on(Events.GuildMemberRemove, async (member) => {
+    const channelId = db.systemChannels.get(`${member.guild.id}-goodbye`);
+    const channel = member.guild.channels.cache.get(channelId);
+    if (channel) {
+        const embed = new EmbedBuilder().setColor(client.colors.error).setTitle('🚪 Farewell').setDescription(`**${member.user.tag}** has left.`);
+        channel.send({ embeds: [embed] });
+    }
+});
+
+// C. Weekly Leaderboard (Sunday at 12:00 PM)
 cron.schedule('0 12 * * 0', async () => {
     client.guilds.cache.forEach(async (guild) => {
         const chan = guild.channels.cache.get(db.systemChannels.get(`${guild.id}-levels`));
@@ -61,7 +95,7 @@ cron.schedule('0 12 * * 0', async () => {
     });
 });
 
-// C. Interactions
+// D. Interaction Handler
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const cmd = client.commands.get(interaction.commandName);
@@ -69,7 +103,7 @@ client.on(Events.InteractionCreate, async interaction => {
     } else if (interaction.isButton() && interaction.customId === 'create_ticket') {
         await interaction.deferReply({ ephemeral: true });
         const ch = await interaction.guild.channels.create({ name: `ticket-${interaction.user.username}`, type: ChannelType.GuildText });
-        await interaction.editReply({ content: `✅ Ticket: ${ch}` });
+        await interaction.editReply({ content: `✅ Ticket created: ${ch}` });
     }
 });
 
