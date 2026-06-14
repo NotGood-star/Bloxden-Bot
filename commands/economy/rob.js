@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { balances, robCooldowns } = require('../../database.js'); 
+const db = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -23,8 +23,8 @@ module.exports = {
         }
 
         // Check cooldown
-        if (robCooldowns.has(userId)) {
-            const expirationTime = robCooldowns.get(userId) + cooldownTime;
+        if (db.robCooldowns.has(userId)) {
+            const expirationTime = db.robCooldowns.get(userId) + cooldownTime;
             if (now < expirationTime) {
                 const timeLeft = Math.round((expirationTime - now) / 60000);
                 return interaction.reply({ 
@@ -34,8 +34,8 @@ module.exports = {
             }
         }
 
-        const userBal = balances.get(userId) || 0;
-        const targetBal = balances.get(target.id) || 0;
+        const userBal = db.balances.get(userId) || 0;
+        const targetBal = db.balances.get(target.id) || 0;
 
         if (targetBal < 200) {
             return interaction.reply({ content: `❌ ${target.username} is too poor to rob! They have less than 200 coins.`, ephemeral: true });
@@ -44,14 +44,19 @@ module.exports = {
             return interaction.reply({ content: '❌ You need at least 100 coins in your wallet to pay court fees if you get caught!', ephemeral: true });
         }
 
-        robCooldowns.set(userId, now);
+        // Update Cooldown
+        db.robCooldowns.set(userId, now);
+        
         const success = Math.random() > 0.6; // 40% chance of a successful heist
 
         if (!success) {
             // Get caught and pay the target a fine
             const fine = Math.floor(Math.random() * 101) + 50; // fine 50-150 coins
-            balances.set(userId, Math.max(0, userBal - fine));
-            balances.set(target.id, targetBal + fine);
+            db.balances.set(userId, Math.max(0, userBal - fine));
+            db.balances.set(target.id, targetBal + fine);
+
+            // Persist the change
+            db.saveDatabase();
 
             const fineEmbed = new EmbedBuilder()
                 .setColor(interaction.client.colors?.error || '#E74C3C')
@@ -63,8 +68,11 @@ module.exports = {
         const percentage = Math.floor(Math.random() * 31) + 10; 
         const stolenAmount = Math.floor(targetBal * (percentage / 100));
 
-        balances.set(userId, userBal + stolenAmount);
-        balances.set(target.id, targetBal - stolenAmount);
+        db.balances.set(userId, userBal + stolenAmount);
+        db.balances.set(target.id, targetBal - stolenAmount);
+
+        // Persist the change
+        db.saveDatabase();
 
         const successEmbed = new EmbedBuilder()
             .setColor(interaction.client.colors?.success || '#2ECC71')
