@@ -1,20 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
-
-const dbPath = path.join(__dirname, '../../database.json');
-function readDB() { 
-    try {
-        return JSON.parse(fs.readFileSync(dbPath, 'utf8') || '{}'); 
-    } catch (e) {
-        return {};
-    }
-}
-function writeDB(data) { 
-    try {
-        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); 
-    } catch (e) {}
-}
+// Import the central database object
+const db = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -31,12 +17,15 @@ module.exports = {
     async execute(interaction) {
         const target = interaction.options.getUser('user');
         const score = interaction.options.getInteger('score');
-        const db = readDB();
 
-        if (!db.weeklyScores) db.weeklyScores = {};
-        db.weeklyScores[target.id] = score;
+        // Update the central weeklyScores Map
+        db.weeklyScores.set(target.id, score);
 
-        writeDB(db);
-        return interaction.reply({ content: `📊 Modified operational values: ${target} set to **${score} points** for the active weekly tracking loop.` });
+        // Persist the change to your database.json file
+        db.saveDatabase();
+
+        return interaction.reply({ 
+            content: `📊 Modified operational values: ${target} set to **${score} points** for the active weekly tracking loop.` 
+        });
     }
 };
