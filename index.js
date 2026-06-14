@@ -1,12 +1,13 @@
-require('dotenv').config();
+    require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, Events, EmbedBuilder, ChannelType } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const cron = require('node-cron');
+// Import your centralized database module
 const db = require('./database.js');
 
-// 1. Web Server (Keep-Alive)
+// 1. Web Server (Keep-Alive for Render/Hosting)
 const app = express();
 app.get('/', (req, res) => res.send('Bot is active!'));
 app.listen(process.env.PORT || 10000);
@@ -36,7 +37,7 @@ for (const folder of fs.readdirSync(foldersPath)) {
     }
 }
 
-// 4. Events
+// 4. Client Ready Event
 client.once(Events.ClientReady, () => {
     db.loadDatabase();
     console.log(`🚀 Online as ${client.user.tag}`);
@@ -48,21 +49,24 @@ client.on(Events.MessageCreate, async (message) => {
     const userId = message.author.id;
     if (db.xpCooldowns.has(userId)) return;
 
-    const newXp = (db.xp.get(userId) || 0) + Math.floor(Math.random() * 10) + 5;
+    // Logic: Increase XP
+    const currentXp = db.xp.get(userId) || 0;
+    const newXp = currentXp + Math.floor(Math.random() * 10) + 5;
     db.xp.set(userId, newXp);
     
+    // Level Up Check
     const lvl = db.levels.get(userId) || 1;
     if (newXp >= lvl * 500) {
         db.levels.set(userId, lvl + 1);
-        db.xp.set(userId, 0);
-        const chanId = db.systemChannels.get(`${message.guild.id}-levels`);
+        db.xp.set(userId, 0); // Reset XP after level up
+        const chanId = db.systemChannels.get(`${message.guild.id}-level`);
         const chan = message.guild.channels.cache.get(chanId);
         if (chan) chan.send(`🎉 ${message.author} leveled up to **Level ${lvl + 1}**!`);
     }
 
     db.xpCooldowns.set(userId, true);
     setTimeout(() => db.xpCooldowns.delete(userId), 60000);
-    db.saveDatabase();
+    db.saveDatabase(); // Ensure progress persists
 });
 
 // B. Welcome / Goodbye
@@ -87,10 +91,14 @@ client.on(Events.GuildMemberRemove, async (member) => {
 // C. Weekly Leaderboard (Sunday at 12:00 PM)
 cron.schedule('0 12 * * 0', async () => {
     client.guilds.cache.forEach(async (guild) => {
-        const chan = guild.channels.cache.get(db.systemChannels.get(`${guild.id}-levels`));
+        const chanId = db.systemChannels.get(`${guild.id}-level`);
+        const chan = guild.channels.cache.get(chanId);
         if (!chan) return;
+        
+        // Convert Map to array and sort by level
         const sorted = [...db.levels.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
         const desc = sorted.map((u, i) => `${i + 1}. <@${u[0]}> - Level ${u[1]}`).join('\n');
+        
         chan.send({ embeds: [new EmbedBuilder().setTitle('🏆 Weekly XP Leaderboard').setDescription(desc || 'No data')] });
     });
 });
