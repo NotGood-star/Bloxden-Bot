@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { balances, userJobs, workCooldowns, JOB_LIST } = require('../../database.js'); 
+// Import the central database object
+const db = require('../../database.js'); 
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -11,7 +12,7 @@ module.exports = {
         const now = Date.now();
 
         // 💼 Check if they even have a job
-        if (!userJobs.has(userId)) {
+        if (!db.userJobs.has(userId)) {
             return interaction.reply({ 
                 content: '❌ You don\'t have a job yet! Use \`/work-apply\` to pick a career path first.', 
                 ephemeral: true 
@@ -19,8 +20,8 @@ module.exports = {
         }
 
         // ⏱️ Check cooldown
-        if (workCooldowns.has(userId)) {
-            const expirationTime = workCooldowns.get(userId) + cooldownTime;
+        if (db.workCooldowns.has(userId)) {
+            const expirationTime = db.workCooldowns.get(userId) + cooldownTime;
             if (now < expirationTime) {
                 const timeLeft = Math.round((expirationTime - now) / 60000); // convert to minutes
                 return interaction.reply({ 
@@ -30,8 +31,8 @@ module.exports = {
             }
         }
 
-        const jobId = userJobs.get(userId);
-        const jobConfig = JOB_LIST[jobId];
+        const jobId = db.userJobs.get(userId);
+        const jobConfig = db.JOB_LIST[jobId];
 
         // Fallback protection if job configuration disappeared
         if (!jobConfig) {
@@ -40,10 +41,14 @@ module.exports = {
 
         // Calculate random payout based on job config limits
         const payout = Math.floor(Math.random() * (jobConfig.max - jobConfig.min + 1)) + jobConfig.min;
-        const currentBal = balances.get(userId) || 0;
+        const currentBal = db.balances.get(userId) || 0;
 
-        balances.set(userId, currentBal + payout);
-        workCooldowns.set(userId, now);
+        // Update state
+        db.balances.set(userId, currentBal + payout);
+        db.workCooldowns.set(userId, now);
+
+        // Persist data to the JSON file
+        db.saveDatabase();
 
         const embedColor = interaction.client.colors?.success || '#2ECC71';
         const workEmbed = new EmbedBuilder()
